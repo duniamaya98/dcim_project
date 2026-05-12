@@ -1,0 +1,23 @@
+[
+  {
+    "model": "bartowski/Qwen2.5.1-Coder-7B-Instruct-GGUF",
+    "latency_avg": 0.8112419128417969,
+    "latency_p95": 0.9451052665710449,
+    "tokens_per_sec": 83.75522504744008,
+    "ttft": 0.021678686141967773,
+    "throughput": 2.0238010511325926,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 37.13333333333333,
+    "gpu0_vram_avg_mb": 4078.5625,
+    "gpu1_util_avg": 49.266666666666666,
+    "gpu1_vram_avg_mb": 3919.125,
+    "reasoning_score": 0.75,
+    "rca_score": 1.0,
+    "tool_use_score": 0.917,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.76,
+    "domain_knowledge_score": 1.0,
+    "final_score": 91.47
+  }
+]

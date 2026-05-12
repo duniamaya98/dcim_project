@@ -1,0 +1,23 @@
+[
+  {
+    "model": "microsoft/phi-4-gguf",
+    "latency_avg": 1.3751380443572998,
+    "latency_p95": 1.540556526184082,
+    "tokens_per_sec": 48.86011602123874,
+    "ttft": 0.036607980728149414,
+    "throughput": 1.2655440328522765,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 43.93333333333333,
+    "gpu0_vram_avg_mb": 6613.375,
+    "gpu1_util_avg": 48.733333333333334,
+    "gpu1_vram_avg_mb": 6290.125,
+    "reasoning_score": 1.0,
+    "rca_score": 1.0,
+    "tool_use_score": 0.917,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.503,
+    "domain_knowledge_score": 1.0,
+    "final_score": 90.69
+  }
+]

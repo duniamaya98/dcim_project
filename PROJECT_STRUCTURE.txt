@@ -1,0 +1,78 @@
+.
+├── CONSOLIDATION_SUMMARY.md
+├── MIGRATION_GUIDE.md
+├── PROJECT_STRUCTURE.txt
+├── README.md
+├── analysis
+│   └── ANALYSIS_INDEX.md
+├── documentation
+│   ├── DCIM_AI_ANALYSIS.md
+│   ├── DCIM_AI_IMPLEMENTATION_ANALYSIS.md
+│   ├── DCIM_AI_PATH_REFERENCE.md
+│   ├── DCIM_AI_RECONCILIATION.md
+│   ├── DCIM_AI_SUMMARY.md
+│   ├── MT-023_COMPLETION_CERTIFICATE.md
+│   ├── MT-023_IMPLEMENTATION_SUMMARY.md
+│   ├── MT-023_LLM_Inference_Service_API_Layer.md
+│   ├── MT-023_Model_Preparation_Detail.md
+│   ├── MT-023_UNSLOTH_INTEGRATION_ANALYSIS.md
+│   └── dcim_ai_plan.md
+├── implementation
+│   ├── dcim_ai_v1
+│   │   ├── PROJECT_FINAL_SUMMARY.md
+│   │   ├── README.md
+│   │   ├── TESTING.md
+│   │   ├── docker-compose.yml
+│   │   ├── llm
+│   │   ├── main.py
+│   │   ├── prompting
+│   │   ├── query_engine
+│   │   ├── rag
+│   │   ├── requirements.txt
+│   │   ├── scripts
+│   │   └── simulation
+│   ├── dcim_ai_v2_rag
+│   │   ├── __init__.py
+│   │   ├── api
+│   │   ├── artifacts
+│   │   ├── automation
+│   │   ├── config
+│   │   ├── core
+│   │   ├── correlation
+│   │   ├── domain
+│   │   ├── features
+│   │   ├── inference
+│   │   ├── llm
+│   │   ├── main.py
+│   │   ├── models
+│   │   ├── monitoring
+│   │   ├── registry
+│   │   ├── root_cause
+│   │   ├── services
+│   │   ├── tests
+│   │   └── training
+│   └── dcim_rnd_llm
+│       ├── api.py
+│       ├── chunking.py
+│       ├── embedding.py
+│       ├── extract_text_fr_pdf.py
+│       ├── faiss_db
+│       ├── ingest_netbox.py
+│       ├── pdf
+│       ├── query.py
+│       ├── vector_store.py
+│       └── vectorstore
+└── reference_docs
+    └── MT-004_Analytics & AI Foundation
+        ├── (MT-018) Traditional ML Model Configuration Documentation.md
+        ├── (MT-018) Traditional Machine Learning Model.md
+        ├── (MT-019) Anomaly Detection Framework Configuration Document.md
+        ├── (MT-019) Anomaly Detection Framework.md
+        ├── (MT-020) Cross-Domain Corraltion Engine Configuration Documentation.md
+        ├── (MT-020) Cross-Domain Correlation Engine.md
+        ├── (MT-021) Model Training & Evaluation Lifecycle Engine Configuration Documentation.md
+        ├── (MT-021) Model Training & Evaluation Lifecycle Engine.md
+        ├── (MT-022) Root Cause Analysis Engine .md
+        └── (MT-022) Root Cause Analysis Engine Configuration Document.md
+
+35 directories, 41 files

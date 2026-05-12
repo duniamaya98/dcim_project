@@ -1,0 +1,33 @@
+{
+    "current_production": "v1.4",
+    "available_models": [
+        "v1.0",
+        "v1.1",
+        "v1.2",
+        "v1.3",
+        "v1.4",
+        "v1.5",
+        "v1.6",
+        "v1.7",
+        "v1.8",
+        "v1.9",
+        "v1.10"
+    ],
+    "correlation_config": {
+        "correlation_version": "c1.0",
+        "correlation_strategy": "temporal_multi_domain_v1",
+        "severity_matrix_version": "sm1.0"
+    },
+    "rca_config": {
+        "rca_version": "1.0",
+        "topology_strategy": "hybrid"
+    },
+    "rca_topology_override": {
+        "cooling": {
+            "compute": 0.95
+        },
+        "compute": {
+            "memory": 2.0
+        }
+    }
+}

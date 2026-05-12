@@ -1,0 +1,80 @@
+{
+  "timestamp": null,
+  "overall_relevance": 0.8333333333333334,
+  "overall_keyword_score": 0.6866666666666666,
+  "avg_latency": 4.756666666666667,
+  "results": [
+    {
+      "id": 1,
+      "category": "anomaly_detection",
+      "instruction": "Apakah ada anomali yang terdeteksi? Jelaskan.",
+      "output": "**Ya, ada anomali yang terdeteksi dengan tingkat keparahan *critical*.**\n\nBerikut penjelasan teknis berdasarkan data yang diberikan:\n\n---\n\n### 🔍 **Ringkasan Anomali**\n- **Prediksi Anomali**: `anomaly` → Sistem mendeteksi perubahan tidak normal.\n- **Tingkat Keparahan**: `critical` → Perlu tindakan segera.\n- **Voting Anomali**: 3 suara → Dibuktikan oleh sistem bahwa anomali ini tidak hanya satu sumber, tapi terkonfirmasi oleh lebih dari satu sensor/agent.\n- **Skor Drift**: 3.8 → **Drift Status: se",
+      "latency": 5.19,
+      "keyword_score": 1.0,
+      "keywords_found": 5,
+      "keywords_total": 5,
+      "length": 1515,
+      "relevance": 1.0
+    },
+    {
+      "id": 2,
+      "category": "root_cause",
+      "instruction": "Apa root cause dari masalah ini?",
+      "output": "Berdasarkan data yang diberikan, **root cause utama** dari masalah ini adalah:\n\n> **Drift berat (severe_drift) yang disebabkan oleh perubahan signifikan dalam pola perilaku server, yang berpotensi menunjukkan masalah sistem atau peningkatan beban yang tidak terduga.**\n\n---\n\n### Analisis Rinci:\n\n#### 1. **Anomaly Detected (3/3 vote)**\n- Model prediksi menunjukkan anomali dengan skor tinggi (3/3 vote), artinya sistem telah memprediksi bahwa kondisi saat ini tidak sesuai dengan pola normal.\n- Ini m",
+      "latency": 4.66,
+      "keyword_score": 0.75,
+      "keywords_found": 3,
+      "keywords_total": 4,
+      "length": 1732,
+      "relevance": 1.0
+    },
+    {
+      "id": 3,
+      "category": "recommendation",
+      "instruction": "Apa rekomendasi tindakan untuk kondisi ini?",
+      "output": "Berdasarkan data yang diberikan, kondisi ini menunjukkan **anomali ringan dengan drift moderat** yang terfokus pada **domain memori**, dengan **severity warning** dan **2 suara anomali**. Berikut rekomendasi tindakan yang tepat:\n\n---\n\n### 🔍 **Analisis Singkat:**\n- **CPU Usage (15.0%)** → Normal, tidak mencurigakan.\n- **Memory Usage (95.8%)** → **Sangat tinggi**, mendekati batas maksimum. Ini adalah **fokus utama**.\n- **Disk IO (20.0)** → Normal.\n- **Net Rx/Tx** → Rasio rendah, tidak mencurigakan",
+      "latency": 4.68,
+      "keyword_score": 0.8,
+      "keywords_found": 4,
+      "keywords_total": 5,
+      "length": 1653,
+      "relevance": 1.0
+    },
+    {
+      "id": 4,
+      "category": "drift_analysis",
+      "instruction": "Analisis drift dari data monitoring berikut.",
+      "output": "**Analisis Drift dari Data Monitoring**\n\nDari data telemetry dan skor drift yang diberikan, kita dapat menyimpulkan bahwa terjadi **drift mild (drift ringan)** dengan skor drift **1.8**, yang menunjukkan perubahan yang tidak signifikan namun masih layak diawasi. Drift ini didukung oleh **z-score** masing-masing fitur, yang menunjukkan seberapa jauh nilai fitur tersebut berada dari rata-rata (mean) dalam distribusi normal.\n\n---\n\n### **Analisis Fitur Berdasarkan Z-Score**\n\n| Fitur         | Nilai ",
+      "latency": 4.72,
+      "keyword_score": 0.5,
+      "keywords_found": 2,
+      "keywords_total": 4,
+      "length": 1638,
+      "relevance": 0.5
+    },
+    {
+      "id": 5,
+      "category": "normal_condition",
+      "instruction": "Jelaskan kondisi sistem berdasarkan data berikut.",
+      "output": "Berdasarkan data yang diberikan, kondisi sistem saat ini **stabil dan beroperasi normal** tanpa indikasi anomali atau drift signifikan. Berikut penjelasan detail:\n\n---\n\n### 🔍 **Analisis Metrik Sistem:**\n\n- **CPU Usage: 25.0%**  \n  → Penggunaan CPU rendah, menunjukkan beban kerja ringan. Tidak ada tekanan pada prosesor, cocok untuk sistem yang tidak berat atau dalam mode idle/low-load.\n\n- **Memory Usage: 40.0%**  \n  → Penggunaan memori masih dalam batas aman. Tidak ada tekanan pada RAM, menunjukk",
+      "latency": 4.64,
+      "keyword_score": 0.67,
+      "keywords_found": 2,
+      "keywords_total": 3,
+      "length": 1701,
+      "relevance": 1.0
+    },
+    {
+      "id": 6,
+      "category": "multi_domain",
+      "instruction": "Lakukan analisis lengkap terhadap data monitoring berikut.",
+      "output": "**Analisis Lengkap Data Monitoring Server — DCIM AI Assistant**\n\n---\n\n### **1. Ringkasan Status Sistem**\n- **CPU Usage**: 88.0% → **Tinggi**, mendekati batas maksimal (biasanya 90% sebagai batas peringatan).\n- **Memory Usage**: 91.0% → **Sangat tinggi**, menunjukkan tekanan signifikan pada sumber daya memori.\n- **Disk I/O**: 85.0% → **Tinggi**, menunjukkan aktivitas I/O storage yang intensif.\n- **Net RX**: 200.0 → **Aktif**, menerima lalu lintas tinggi.\n- **Net TX**: 150.0 → **Aktif**, mengirimk",
+      "latency": 4.65,
+      "keyword_score": 0.4,
+      "keywords_found": 2,
+      "keywords_total": 5,
+      "length": 1536,
+      "relevance": 0.5
+    }
+  ]
+}

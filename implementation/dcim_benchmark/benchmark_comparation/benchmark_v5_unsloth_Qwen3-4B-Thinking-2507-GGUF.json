@@ -1,0 +1,23 @@
+[
+  {
+    "model": "unsloth/Qwen3-4B-Thinking-2507-GGUF",
+    "latency_avg": 6.558981132507324,
+    "latency_p95": 18.290291309356686,
+    "tokens_per_sec": 51.418448615670506,
+    "ttft": 0.04369044303894043,
+    "throughput": 0.6528127044269291,
+    "quality_score": 0.6666666666666666,
+    "gpu0_util_avg": 25.066666666666666,
+    "gpu0_vram_avg_mb": 7098.6875,
+    "gpu1_util_avg": 27.2,
+    "gpu1_vram_avg_mb": 7163.25,
+    "reasoning_score": 1.0,
+    "rca_score": 1.0,
+    "tool_use_score": 0.917,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.412,
+    "domain_knowledge_score": 1.0,
+    "final_score": 74.56
+  }
+]

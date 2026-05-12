@@ -1,0 +1,23 @@
+[
+  {
+    "model": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+    "latency_avg": 1.1962786197662354,
+    "latency_p95": 1.4267297267913819,
+    "tokens_per_sec": 51.55370641009557,
+    "ttft": 0.04661989212036133,
+    "throughput": 1.6437993028115436,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 31.866666666666667,
+    "gpu0_vram_avg_mb": 7883.125,
+    "gpu1_util_avg": 30.266666666666666,
+    "gpu1_vram_avg_mb": 7164.1875,
+    "reasoning_score": 1.0,
+    "rca_score": 1.0,
+    "tool_use_score": 1.0,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.668,
+    "domain_knowledge_score": 1.0,
+    "final_score": 92.34
+  }
+]

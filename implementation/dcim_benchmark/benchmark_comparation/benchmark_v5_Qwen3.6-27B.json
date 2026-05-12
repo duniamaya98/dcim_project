@@ -1,0 +1,23 @@
+[
+  {
+    "model": "Qwen3.6-27B",
+    "latency_avg": 3.794221305847168,
+    "latency_p95": 3.799263048171997,
+    "tokens_per_sec": 26.355931344003768,
+    "ttft": 0.2970743179321289,
+    "throughput": 0.2735675927949971,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 40.0,
+    "gpu0_vram_avg_mb": 7511.6875,
+    "gpu1_util_avg": 49.6,
+    "gpu1_vram_avg_mb": 7438.125,
+    "reasoning_score": 0.25,
+    "rca_score": 0.75,
+    "tool_use_score": 0.333,
+    "long_context_score": 0.0,
+    "hallucination_score": 0.5,
+    "consistency_score": 0.5,
+    "domain_knowledge_score": 0.0,
+    "final_score": 47.83
+  }
+]

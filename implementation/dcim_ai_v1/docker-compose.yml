@@ -1,0 +1,41 @@
+services:
+  # MT-023: LLM Inference Engine (vLLM)
+  vllm-engine:
+    image: vllm/vllm-openai:latest
+    command: --model casperhansen/llama-3-8b-instruct-awq --quantization awq --tensor-parallel-size 2
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+
+  # MT-023 API Wrapper
+  llm-api:
+    build: 
+      context: ./llm
+    ports:
+      - "8080:8080"
+    environment:
+      - VLLM_API_URL=http://vllm-engine:8000/v1
+
+  # MT-025: Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+
+  # MT-026 & MT-027 Central Service
+  dcim-ai-platform:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      - LLM_API_URL=http://llm-api:8080/llm/inference
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      - vllm-engine
+      - qdrant

@@ -1,0 +1,23 @@
+[
+  {
+    "model": "unsloth/Qwen3.5-9B-GGUF",
+    "latency_avg": 19.10039076805115,
+    "latency_p95": 23.483056926727294,
+    "tokens_per_sec": 63.7289910156069,
+    "ttft": 0.11765694618225098,
+    "throughput": 0.08205490066063825,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 31.266666666666666,
+    "gpu0_vram_avg_mb": 8128.0,
+    "gpu1_util_avg": 36.53333333333333,
+    "gpu1_vram_avg_mb": 7023.625,
+    "reasoning_score": 1.0,
+    "rca_score": 1.0,
+    "tool_use_score": 0.917,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.768,
+    "domain_knowledge_score": 1.0,
+    "final_score": 79.01
+  }
+]

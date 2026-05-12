@@ -1,0 +1,23 @@
+[
+  {
+    "model": "unsloth/SmolLM3-3B-128K-GGUF",
+    "latency_avg": 1.9397396087646483,
+    "latency_p95": 2.3536892414093016,
+    "tokens_per_sec": 136.83946887621448,
+    "ttft": 0.02691054344177246,
+    "throughput": 0.8606172205477927,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 39.333333333333336,
+    "gpu0_vram_avg_mb": 6966.75,
+    "gpu1_util_avg": 44.46666666666667,
+    "gpu1_vram_avg_mb": 6353.4375,
+    "reasoning_score": 1.0,
+    "rca_score": 1.0,
+    "tool_use_score": 0.917,
+    "long_context_score": 1.0,
+    "hallucination_score": 0.5,
+    "consistency_score": 0.371,
+    "domain_knowledge_score": 1.0,
+    "final_score": 81.03
+  }
+]

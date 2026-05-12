@@ -1,0 +1,23 @@
+[
+  {
+    "model": "unsloth/DeepSeek-R1-Distill-Qwen-7B-GGUF",
+    "latency_avg": 4.572933578491211,
+    "latency_p95": 7.538859319686889,
+    "tokens_per_sec": 82.19195266694399,
+    "ttft": 0.02842235565185547,
+    "throughput": 0.348914172361407,
+    "quality_score": 1.0,
+    "gpu0_util_avg": 38.266666666666666,
+    "gpu0_vram_avg_mb": 6979.375,
+    "gpu1_util_avg": 46.93333333333333,
+    "gpu1_vram_avg_mb": 6604.0,
+    "reasoning_score": 0.75,
+    "rca_score": 1.0,
+    "tool_use_score": 1.0,
+    "long_context_score": 1.0,
+    "hallucination_score": 1.0,
+    "consistency_score": 0.315,
+    "domain_knowledge_score": 1.0,
+    "final_score": 75.08
+  }
+]

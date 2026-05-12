@@ -1,0 +1,23 @@
+[
+  {
+    "model": "default-model",
+    "latency_avg": 34.491262435913086,
+    "latency_p95": 47.831108760833736,
+    "tokens_per_sec": 27.484978876700698,
+    "ttft": 0.3682575225830078,
+    "throughput": 0.05025263062290118,
+    "quality_score": 0.6666666666666666,
+    "gpu0_util_avg": 37.8,
+    "gpu0_vram_avg_mb": 7995.25,
+    "gpu1_util_avg": 36.4,
+    "gpu1_vram_avg_mb": 6719.125,
+    "reasoning_score": 0.875,
+    "rca_score": 0.375,
+    "tool_use_score": 0.0,
+    "long_context_score": 0.0,
+    "hallucination_score": 0.0,
+    "consistency_score": 0,
+    "domain_knowledge_score": 0.5,
+    "final_score": 33.33
+  }
+]

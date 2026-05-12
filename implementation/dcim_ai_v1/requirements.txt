@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+httpx
+qdrant-client
+sentence-transformers
+jinja2
+numpy
+pydantic
+python-dotenv
