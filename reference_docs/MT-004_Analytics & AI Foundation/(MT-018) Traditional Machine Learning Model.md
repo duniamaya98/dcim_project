@@ -316,4 +316,115 @@ Traditional ML Phase Status:
 | ---------- | ----- | ------ | ------------------------------------- |
 | 13/02/2026 | 1     | Fakhri | -                                     |
 | 02/03/2026 | 1.1.2 | Fakhri | Perubahan tambahan penjelasan metrics |
+| 20/05/2026 | 1.2.0 | DCIM AI Team | Addendum v1.2.0 — koreksi untuk UC1/UC2/UC3 (lihat Addendum di bawah) |
+
+***
+
+# 11. Addendum v1.2.0 — Penyesuaian untuk Use Case 1, 2, 3
+
+> **Tanggal:** 20 Mei 2026
+> **Tujuan:** Menyelaraskan MT-018 dengan kebutuhan tiga use case Analytics & AI Engine (Predictive Failure Alerting, Capacity Optimization, Energy/PUE Drift).
+> **Sifat:** Addendum non-destruktif — isi bagian 1–10 di atas tetap dipertahankan sebagai rekam jejak.
+
+## 11.1 Ringkasan Gap
+
+| Area | Kondisi Saat Ini (Bagian 1–10) | Kebutuhan UC | Status |
+| --- | --- | --- | --- |
+| Feature scope | `cpu_usage, memory_usage, disk_io, net_rx, net_tx` | UC1 perlu `temperature, smart_*, fan_speed`; UC3 perlu `power_w, voltage, pue`, `temp_inlet/outlet`, `humidity` | ⚠️ Diperluas |
+| Data source | Hardcoded ke `server_metrics` | UC2/UC3 butuh sumber tambahan (NetBox, PDU, environment) | ⚠️ Generalisasi |
+| Algoritma | Hanya anomaly classification (IF/LOF/OCSVM) | UC1 butuh time-series forecasting | ❌ Tambah |
+| Labeling | Unsupervised only | UC1 butuh supervised failure labels | ❌ Tambah |
+| Data quality | `dropna` saja | UC3 sensor noisy → butuh imputation & outlier filtering | ❌ Tambah |
+
+## 11.2 Perluasan Feature Scope
+
+Tambahkan **feature group** terpisah agar tidak mencampur metrik server dengan metrik energi/lingkungan.
+
+| Group | Domain | Fitur | Sumber |
+| --- | --- | --- | --- |
+| `server_compute` | compute, memory, network | `cpu_usage, memory_usage, disk_io, net_rx, net_tx, gpu_util, gpu_mem_used, temperature` | `server_metrics` (existing) |
+| `server_health` (baru) | storage, hardware | `smart_reallocated_sectors, smart_temp, smart_pending_sectors, fan_speed, hwmon_temp` | SNMP/IPMI/Redfish (UC1) |
+| `power_metrics` (baru) | power | `power_w, voltage, current, energy_kwh, pue` | PDU/UPS (UC3) |
+| `environment_metrics` (baru) | cooling | `temp_inlet, temp_outlet, humidity, dewpoint` | Sensor lingkungan (UC3) |
+| `capacity_metrics` (baru) | compute, storage, network | rolling 7d/30d/90d aggregates dari `server_compute` + rack occupancy dari NetBox | Aggregate + NetBox (UC2) |
+
+> **Catatan:** Variance filter `<1e-3` yang sebelumnya men-drop `disk_io` perlu **dievaluasi ulang per-group**. Pada konteks energy, deviasi kecil tetap signifikan.
+
+## 11.3 Generalisasi Data Source
+
+Pipeline `dataset_preparation` saat ini terikat ke `server_metrics`. Refactor menjadi **abstract loader** dengan kontrak minimal:
+
+```python
+class MetricSource:
+    domain: str             # 'server' | 'power' | 'environment'
+    table: str
+    feature_columns: list[str]
+    timestamp_column: str = 'time'
+    asset_id_column: str = 'hostname'  # atau 'device_id'
+    def load(window: TimeWindow) -> pd.DataFrame: ...
+```
+
+Implementasi konkret per UC:
+
+* `ServerMetricsSource` (existing, untuk UC1/UC2)
+* `PowerMetricsSource` (baru, untuk UC3 — query tabel TimescaleDB `power_metrics`)
+* `EnvironmentMetricsSource` (baru, untuk UC3)
+* `NetBoxAssetSource` (baru, untuk UC2 — read-only NetBox API)
+
+## 11.4 Forecasting Profile (Baru)
+
+UC1 mensyaratkan deteksi **24–48 jam sebelum kegagalan**. Anomaly detection saja tidak cukup.
+
+| Layer | Algoritma | Output | Use For |
+| --- | --- | --- | --- |
+| Baseline forecast | Prophet / XGBoost regression dengan lag features (1h, 6h, 24h) | `forecast_value`, `forecast_ci_low`, `forecast_ci_high` per metrik | UC1 quick-win |
+| Advanced forecast | LSTM / Temporal Fusion Transformer | `failure_probability_24h`, `failure_probability_48h` | UC1 production |
+
+**Integrasi:** output forecast disuntikkan sebagai *forecasted feature* ke ensemble anomaly existing. Anomaly pada `forecast_value` = early warning.
+
+## 11.5 Supervised Labeling untuk Failure Events
+
+Tambahkan tabel `failure_events` dengan kontrak:
+
+```sql
+failure_events (
+  event_id UUID PK,
+  asset_id TEXT,
+  event_time TIMESTAMPTZ,
+  failure_type TEXT,    -- 'disk', 'fan', 'thermal', 'memory', 'power'
+  severity TEXT,        -- 'minor', 'major', 'critical'
+  source TEXT,          -- 'manual', 'incident_ticket', 'sensor_threshold'
+  evidence JSONB
+)
+```
+
+Digunakan untuk:
+* Training supervised model (Gradient Boosting / Random Forest) dengan window features sebelum event.
+* Backtesting forecast model terhadap failure history.
+
+## 11.6 Imputation & Noise Handling
+
+Pipa cleaning sekarang hanya `dropna`. Tambahkan strategi per-feature:
+
+| Strategi | Cocok Untuk | Catatan |
+| --- | --- | --- |
+| Forward-fill (max gap 5 menit) | Streaming sensor (PDU, environment) | Hindari gap-fill pada gap besar |
+| Linear interpolation | Metrik kontinu (suhu, voltage) | Tandai sebagai imputed di kolom `_imputed_flag` |
+| Median per-window | Outlier filtering pada SMART data | Lebih robust dari mean |
+| Drop | Schema invalid / corrupt rows | Logged ke `data_quality_log` |
+
+## 11.7 Backward Compatibility
+
+Semua perubahan di addendum ini **opt-in**:
+* Pipeline existing `server_metrics → IF/LOF/OCSVM` tetap berjalan tanpa perubahan.
+* Feature group baru dipanggil hanya bila profil `forecast`, `energy`, atau `capacity` di-aktifkan via konfigurasi training.
+* Schema `failure_events` & sumber data baru bersifat **additive**.
+
+## 11.8 Mapping ke Use Case
+
+| UC | Bagian Addendum yang Dipakai |
+| --- | --- |
+| UC1 | 11.2 (`server_health`), 11.4 (forecasting), 11.5 (labeling), 11.6 (imputation SMART) |
+| UC2 | 11.2 (`capacity_metrics`), 11.3 (`NetBoxAssetSource`) |
+| UC3 | 11.2 (`power_metrics`, `environment_metrics`), 11.3 (`PowerMetricsSource`, `EnvironmentMetricsSource`), 11.6 (imputation sensor) |
 

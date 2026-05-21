@@ -25,11 +25,15 @@ MANIFEST
 
 # Virtual Environment
 venv/
+ragavenv/
+*/venv/
+*/ragavenv/
 env/
 ENV/
 env.bak/
 venv.bak/
 .venv/
+*/.venv/
 
 # PyCharm
 .idea/
@@ -81,7 +85,9 @@ vectorstore/
 *.pt
 *.onnx
 models/
+*/models/
 checkpoints/
+*/checkpoints/
 
 # Data files
 *.csv

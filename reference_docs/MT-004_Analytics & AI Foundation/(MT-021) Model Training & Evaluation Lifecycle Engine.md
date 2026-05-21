@@ -492,3 +492,152 @@ Lifecycle-Governed Monitoring Intelligence Platform
 
 ***
 
+# 7. Addendum v1.2.0 — Penyesuaian untuk Use Case 1, 2, 3
+
+> **Tanggal:** 20 Mei 2026
+> **Tujuan:** Membuat training & evaluation lifecycle multi-task agar mendukung anomaly detection, forecasting (UC1), clustering (UC2), dan energy anomaly (UC3).
+> **Sifat:** Addendum non-destruktif — bagian 1–6 di atas tetap berlaku.
+
+## 7.1 Ringkasan Gap
+
+| Area | Kondisi Saat Ini | Kebutuhan UC | Status |
+| --- | --- | --- | --- |
+| Training profile | Hanya tahu ensemble anomaly (IF/LOF/OCSVM) | UC1 forecast, UC2 clustering, UC3 energy anomaly | ❌ Tambah |
+| Evaluation metric | `validation_anomaly_ratio` saja | MAPE/RMSE (forecast), silhouette (clustering), detection latency (energy) | ❌ Tambah |
+| Scheduled retraining | Manual / drift-based saja | Semua UC butuh schedule + drift trigger eksplisit | ⚠️ Diperjelas |
+| Data window strategy | Single window (mis. 30 menit) | UC1 failure-event window, UC2 90d rolling, UC3 7d rolling | ⚠️ Diperluas |
+| Reproducibility | Ada metadata, tapi tanpa dataset hash & seed konsisten | Semua UC perlu audit & rollback | ⚠️ Diperketat |
+
+## 7.2 Multi-Task Training Profile
+
+Training Orchestrator diberi konsep `training_profile` sebagai opsi konfigurasi.
+
+```python
+class TrainingProfile:
+    name: str                 # 'anomaly' | 'forecast' | 'clustering' | 'energy_anomaly'
+    domain: str               # 'server' | 'power' | 'cooling' | 'compute'
+    feature_group: str        # dari MT-018 §11.2
+    algorithms: list[str]
+    training_window: str      # '30m' | '7d' | '30d' | '90d' | 'failure_event'
+    eval_metrics: list[str]
+    promotion_rules: dict
+```
+
+Profil bawaan:
+
+| Profil | Domain | Algoritma | Window | Eval |
+| --- | --- | --- | --- | --- |
+| `anomaly` (existing) | server | IF + LOF + OCSVM | 30m rolling | `anomaly_delta`, `agreement_rate` |
+| `forecast` (UC1 baseline) | server | XGBoost / Prophet | 30d + lag | `MAPE`, `RMSE`, `coverage_95` |
+| `forecast_advanced` (UC1) | server | LSTM / TFT | 90d sequence | `MAPE`, `failure_recall_24h`, `failure_precision_24h` |
+| `clustering` (UC2) | compute / storage | KMeans + Silhouette | 90d aggregate | `silhouette`, `inertia`, `davies_bouldin` |
+| `energy_anomaly` (UC3) | power / cooling | IF + Z-score | 7d streaming | `detection_latency_p95`, `false_positive_rate` |
+
+**Backward compatibility:** Bila `training_profile` tidak diset, default ke `anomaly` (perilaku lama).
+
+## 7.3 Evaluation Metric Catalog (Tambahan)
+
+Selain metrik existing (anomaly_delta, agreement_rate, drift_level_*), tambahkan:
+
+| Metric | Profil | Definisi |
+| --- | --- | --- |
+| `MAPE` | forecast | Mean Absolute Percentage Error |
+| `RMSE` | forecast | Root Mean Squared Error |
+| `coverage_95` | forecast | % observasi aktual berada di dalam confidence interval 95% |
+| `failure_recall_24h` | forecast_advanced | TP / (TP+FN) untuk window 24 jam sebelum failure |
+| `failure_precision_24h` | forecast_advanced | TP / (TP+FP) |
+| `silhouette` | clustering | Kohesi vs separasi cluster, range [-1, 1] |
+| `inertia` | clustering | Sum of squared distances ke centroid |
+| `davies_bouldin` | clustering | Cluster similarity ratio (lower better) |
+| `detection_latency_p95` | energy_anomaly | P95 latency dari event sampai alert (target ≤ 15 menit) |
+| `false_positive_rate` | energy_anomaly | FP / (FP+TN) terhadap baseline tervalidasi |
+
+## 7.4 Scheduled Retraining (Diperjelas)
+
+Existing: drift-based retrain dengan cooldown. Diperluas:
+
+```python
+class TrainingSchedule:
+    profile: str
+    cron: str                # '0 2 * * *' = harian jam 02:00
+    drift_trigger: bool      # tetap aktif sebagai trigger sekunder
+    on_demand: bool = True   # via CLI / API
+    cooldown_hours: int = 1
+```
+
+Default schedule rekomendasi:
+
+| Profil | Cron | Trigger Drift |
+| --- | --- | --- |
+| `anomaly` | `*/30 * * * *` (30 menit, existing) | ✅ |
+| `forecast` | `0 2 * * *` (harian) | ✅ |
+| `forecast_advanced` | `0 3 * * 0` (mingguan) | ✅ |
+| `clustering` | `0 4 * * 0` (mingguan) | ⚠️ PSI-based |
+| `energy_anomaly` | `0 1 * * *` (harian) | ✅ |
+
+## 7.5 Data Window Strategy (Diperluas)
+
+| Window Type | Cocok Untuk | Behavior |
+| --- | --- | --- |
+| `rolling_30m` | anomaly online | Existing |
+| `rolling_7d` | energy_anomaly | UC3 |
+| `rolling_30d` | forecast baseline | UC1 |
+| `rolling_90d` | clustering, forecast advanced | UC2/UC1 |
+| `failure_event_centered` | supervised forecast | Window N jam sebelum `failure_events.event_time` (UC1) |
+
+Window strategy dipasangkan dengan **dataset snapshot** (lihat 7.6).
+
+## 7.6 Reproducibility (Diperketat)
+
+Setiap artifact wajib menyimpan tambahan metadata:
+
+```json
+{
+  "version": "v1.5",
+  "profile": "energy_anomaly",
+  "dataset_snapshot": {
+    "source": "power_metrics",
+    "window": "rolling_7d",
+    "row_count": 432891,
+    "sha256": "<hash>"
+  },
+  "random_seed": 42,
+  "code_revision": "<git_sha>",
+  "training_window": "...",
+  "validation_anomaly_ratio": "...",
+  "drift_baseline_mean": [...],
+  "drift_baseline_std":  [...],
+  "timestamp": "..."
+}
+```
+
+Manfaat:
+* Audit trail penuh.
+* Rollback by hash.
+* Re-run training bit-perfect.
+
+## 7.7 Promotion Gatekeeper (Diperluas per Profil)
+
+Existing gatekeeper memutuskan APPROVE/REVIEW/REJECT berbasis 3 layer (anomaly_safe, correlation_safe, drift_safe). Untuk profil baru, decision input ditambah:
+
+| Profil | Tambahan Gate |
+| --- | --- |
+| `forecast` | `mape_safe` (MAPE candidate ≤ MAPE production × 1.1), `coverage_safe` (coverage_95 ≥ 0.9) |
+| `forecast_advanced` | `failure_recall_safe` (≥ 0.7), `failure_precision_safe` (≥ 0.6) |
+| `clustering` | `silhouette_safe` (≥ 0.3) |
+| `energy_anomaly` | `latency_safe` (detection_latency_p95 ≤ 15m), `fpr_safe` (false_positive_rate ≤ 0.1) |
+
+## 7.8 Mapping ke Use Case
+
+| UC | Bagian Addendum yang Dipakai |
+| --- | --- |
+| UC1 | 7.2 (`forecast`, `forecast_advanced`), 7.3 (MAPE, failure_recall_24h), 7.4 (cron harian/mingguan), 7.5 (`failure_event_centered`), 7.7 (gates forecast) |
+| UC2 | 7.2 (`clustering`), 7.3 (silhouette, davies_bouldin), 7.4 (mingguan), 7.5 (`rolling_90d`), 7.7 (`silhouette_safe`) |
+| UC3 | 7.2 (`energy_anomaly`), 7.3 (detection_latency_p95, FPR), 7.4 (harian + drift), 7.5 (`rolling_7d`), 7.7 (`latency_safe`, `fpr_safe`) |
+
+## 7.9 Changelog
+
+| Date       | Versi | Auth         | Note                                                                                  |
+| ---------- | ----- | ------------ | ------------------------------------------------------------------------------------- |
+| 20/05/2026 | 1.2.0 | DCIM AI Team | Multi-task training profile, evaluation catalog, scheduled retraining, reproducibility |
+

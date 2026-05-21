@@ -26,7 +26,8 @@ from collections import deque
 from pathlib import Path
 
 # Ensure project root is in path
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# Use parent without resolve() first to handle symlinks correctly
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from sqlalchemy import create_engine, text

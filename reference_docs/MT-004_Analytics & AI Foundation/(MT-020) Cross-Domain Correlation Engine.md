@@ -330,3 +330,157 @@ Escalation Logic
 
 ***
 
+# 6. Addendum v1.2.0 — Penyesuaian untuk Use Case 1, 2, 3
+
+> **Tanggal:** 20 Mei 2026
+> **Tujuan:** Mengaktifkan domain `power` & `cooling`, menambahkan `capacity_state`, asset/topology context, dan multi-resolution window agar correlation engine siap melayani UC1/UC2/UC3.
+> **Sifat:** Addendum non-destruktif — bagian 1–5 di atas tetap berlaku.
+
+## 6.1 Ringkasan Gap
+
+| Area | Kondisi Saat Ini | Kebutuhan UC | Status |
+| --- | --- | --- | --- |
+| Domain feature map | `power` & `cooling` tercantum tapi belum ada fitur konkret | UC3 perlu mapping nyata ke metrik energi/lingkungan | ❌ Tambah |
+| Capacity awareness | Tidak ada | UC2 perlu indikator utilization/headroom/occupancy | ❌ Tambah |
+| Asset context | Stateless, tidak tahu rack/zone/site | UC1/UC2/UC3 perlu konteks fisik | ❌ Tambah |
+| Window granularity | Single rolling window (mis. 5 menit) | UC1 (1h–24h), UC2 (7d–90d), UC3 (1m–15m) | ⚠️ Multi-resolution |
+| Co-occurrence weighting | Tanpa bobot per-domain | UC1/UC3 butuh power+cooling co-occur lebih kritikal | ⚠️ Diperluas |
+
+## 6.2 Domain Feature Map (Diperluas)
+
+`DOMAIN_FEATURE_MAP` diperluas — entri lama tetap, entri baru ditambahkan.
+
+```python
+DOMAIN_FEATURE_MAP = {
+    # existing
+    "compute":  ["cpu_usage", "gpu_util"],
+    "memory":   ["memory_usage", "gpu_mem_used"],
+    "storage":  ["disk_io"],
+    "network":  ["net_rx", "net_tx"],
+
+    # baru — diaktifkan oleh feature group dari MT-018 §11
+    "power":    ["power_w", "voltage", "current", "pue"],
+    "cooling":  ["temp_inlet", "temp_outlet", "humidity", "dewpoint"],
+    "hardware": ["smart_reallocated_sectors", "smart_temp", "fan_speed"],  # UC1
+}
+```
+
+**Activation rule:** domain hanya aktif bila feature group-nya tersedia di sumber data. Tidak menyebabkan breaking change pada deployment yang hanya punya `server_metrics`.
+
+## 6.3 Capacity State (Komponen Baru)
+
+`DomainState` ditambah representasi kapasitas — bukan anomaly, melainkan indikator kondisi struktural.
+
+```python
+@dataclass
+class CapacityState:
+    domain: str
+    utilization_p50: float       # rolling 30d median
+    utilization_p95: float
+    headroom_pct: float          # 100 - p95
+    occupancy_pct: float | None  # dari NetBox (rack U usage)
+    trend_30d: str               # 'increasing' | 'stable' | 'decreasing'
+    underutilized: bool          # p95 < threshold (default 30%)
+    saturating: bool             # p95 > threshold (default 85%)
+```
+
+Dipakai oleh UC2 sebagai input ke modul capacity reasoning (lihat MT-022 §6.4).
+
+## 6.4 Asset/Topology Context
+
+Correlation engine sekarang stateless terhadap aset fisik. Tambahkan resolver:
+
+```python
+class AssetContextResolver:
+    source: str                  # 'netbox' | 'static_yaml'
+    def resolve(asset_id: str) -> AssetContext: ...
+
+@dataclass
+class AssetContext:
+    asset_id: str
+    site: str
+    rack: str
+    zone: str                    # 'cooling_zone_2', dll.
+    criticality: str             # 'tier1' | 'tier2' | 'tier3'
+    role: str                    # 'database', 'compute', 'storage', dll.
+    upstream_pdu: str | None
+    upstream_ups: str | None
+```
+
+`Incident` output diperkaya:
+```
+incident_id, timestamp, severity, confidence,
+active_domains, root_cause_hint,
+asset_context: AssetContext        # baru
+```
+
+Untuk UC2/UC3, satu PDU/UPS bisa dipetakan ke banyak rack, sehingga severity dapat diagregasi per zone.
+
+## 6.5 Multi-Resolution Window
+
+Rolling window single-fixed digantikan dengan **buffer hierarkis**:
+
+| Resolution | Use For | Window |
+| --- | --- | --- |
+| `realtime`  | UC3 PUE drift             | 1m / 5m / 15m  |
+| `incident`  | UC1 anomaly correlation   | 15m / 1h / 6h  |
+| `predictive`| UC1 forecast input        | 6h / 24h       |
+| `capacity`  | UC2 utilization trend     | 7d / 30d / 90d |
+
+`CorrelationBuffer` mendukung **multiple buffers per resolution**, tiap buffer punya `aggregation_engine` sendiri. Default behavior (single 5-menit) tetap berjalan jika konfigurasi multi-resolution tidak diaktifkan.
+
+## 6.6 Domain Criticality Weighting
+
+Co-occurrence matrix ditambah bobot per-domain (configurable):
+
+```yaml
+domain_criticality_weights:
+  power:    1.5    # gangguan power = paling kritikal
+  cooling:  1.4
+  storage:  1.2
+  compute:  1.0
+  memory:   1.0
+  network:  1.0
+  hardware: 1.3
+```
+
+Severity score multi-domain dihitung sebagai:
+```
+weighted_score = Σ (domain_score_i × criticality_weight_i)
+```
+
+Efek: incident yang melibatkan **power + cooling** otomatis severity lebih tinggi daripada **compute + network**, sesuai realitas DCIM.
+
+## 6.7 Causal Topology Update
+
+Causal topology default diperluas (sumber kebenaran tunggal, dipakai juga oleh MT-022):
+
+```
+power    → compute
+power    → cooling
+cooling  → compute
+cooling  → memory
+cooling  → storage
+hardware → storage
+hardware → compute
+storage  → compute
+compute  → memory
+network  → compute
+```
+
+Override registry (`correlation_strategy`) tetap berlaku.
+
+## 6.8 Mapping ke Use Case
+
+| UC | Bagian Addendum yang Dipakai |
+| --- | --- |
+| UC1 | 6.2 (`hardware`), 6.4 (asset context), 6.5 (`incident`+`predictive` window), 6.6 (weighting), 6.7 (`hardware → storage/compute`) |
+| UC2 | 6.3 (`CapacityState`), 6.4 (`occupancy_pct` dari NetBox), 6.5 (`capacity` window 7d/30d/90d) |
+| UC3 | 6.2 (`power`, `cooling`), 6.4 (`upstream_pdu/ups`, `zone`), 6.5 (`realtime` 1m/5m/15m), 6.6 (criticality `power=1.5`), 6.7 (`power → cooling → compute`) |
+
+## 6.9 Changelog
+
+| Date       | Versi | Auth         | Note                                                                  |
+| ---------- | ----- | ------------ | --------------------------------------------------------------------- |
+| 20/05/2026 | 1.2.0 | DCIM AI Team | Domain power/cooling/hardware aktif, capacity state, asset context, multi-resolution window, criticality weighting |
+

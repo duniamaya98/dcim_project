@@ -515,3 +515,217 @@ stability_score =
 
 ***
 
+# 6. Addendum v1.2.0 — Penyesuaian untuk Use Case 1, 2, 3
+
+> **Tanggal:** 20 Mei 2026
+> **Tujuan:** Memperluas RCA engine agar mendukung mode predictive (UC1), capacity reasoning (UC2), domain energi (UC3), dan output yang siap dikonsumsi LLM.
+> **Sifat:** Addendum non-destruktif — bagian 1–5 di atas tetap berlaku.
+
+## 6.1 Ringkasan Gap
+
+| Area | Kondisi Saat Ini | Kebutuhan UC | Status |
+| --- | --- | --- | --- |
+| Domain coverage | Topology fokus compute/memory/storage/network | UC1/UC3 perlu edge ke power & cooling | ❌ Tambah |
+| Predictive RCA | Reaktif — RCA dijalankan setelah incident | UC1 perlu RCA forward dari forecast | ❌ Tambah |
+| Capacity reasoning | Tidak relevan untuk RCA klasik | UC2 perlu modul terpisah berbasis CapacityState | ❌ Tambah |
+| Asset enrichment | RCA result minim konteks fisik | UC1/UC2/UC3 perlu lokasi rack, criticality, PDU/UPS | ⚠️ Diperluas |
+| LLM contract | `RootCauseResult` serializable, tapi prompt template belum standar | LLM `dcim_assistant` perlu format konsisten | ⚠️ Distandardisasi |
+
+## 6.2 Domain Coverage (Topology Diperluas)
+
+Causal topology default disinkronkan dengan MT-020 §6.7:
+
+```
+power    → compute
+power    → cooling
+cooling  → compute
+cooling  → memory
+cooling  → storage
+hardware → storage
+hardware → compute
+storage  → compute
+compute  → memory
+network  → compute
+```
+
+Composite scoring formula (existing) tidak berubah. Hanya `topology_score` sekarang dapat menghasilkan domain `power` / `cooling` / `hardware` sebagai root domain.
+
+## 6.3 Predictive RCA (Forward Reasoning)
+
+Mode RCA baru: **forward** — dijalankan terhadap output forecast model UC1 (lihat MT-019 §6.3 + MT-021 §7.2).
+
+```python
+class RCAMode(Enum):
+    REACTIVE = 'reactive'      # existing — incident yang sudah terjadi
+    FORWARD  = 'forward'       # baru   — projected incident dari forecast
+    HYBRID   = 'hybrid'        # gabungkan keduanya untuk early warning
+
+class ForwardRCAInput:
+    forecast_id: str           # InferenceResult dengan model_type=forecast
+    horizon_h: int             # 24 atau 48
+    forecasted_domains: dict   # domain → forecasted_score
+    asset_id: str
+```
+
+Output `RootCauseResult` sama strukturnya, dengan tambahan field opsional:
+```
+mode: 'reactive' | 'forward' | 'hybrid'
+forecast_horizon_h: int | None
+forecast_confidence: float | None
+```
+
+**Implementasi (v1.2.0 — selesai 20 Mei 2026):**
+
+| Komponen | Lokasi | Catatan |
+| --- | --- | --- |
+| Field opsional `mode`, `forecast_horizon_h`, `forecast_confidence`, `asset_context`, `governance` | `dcim_ai/root_cause/rca_models.py` | Default `mode = 'reactive'` → backward compatible |
+| `RCAEngine.analyze_forward(forecast_payload)` | `dcim_ai/root_cause/rca_engine.py` | Menerima dict `{incident_id, timestamp, forecast_horizon_h, forecasted_domains, forecast_confidence, asset_id}`. Reuse `analyze()` via synthetic incident. |
+| `RCAEngine.analyze_hybrid(incident, forecast_payload, forecast_weight=0.4)` | `dcim_ai/root_cause/rca_engine.py` | Weighted merge probabilitas: `(1-w)·reactive + w·forward`, lalu re-rank & rebuild causal chain. |
+| Governance flag `forward_low_confidence` | otomatis aktif bila `forecast_confidence < 0.5` | Sesuai §6.7 |
+| Test coverage | `dcim_ai/tests/test_rca_forward.py` | 11 test (reactive backcompat, forward, hybrid, serialization) |
+
+Manfaat: RCA bisa menjawab "kalau forecast 24 jam ke depan menunjukkan failure di server X, kemungkinan rantai penyebabnya apa?" — sesuai UC1 success criteria (alert 24–48 jam sebelum kegagalan).
+
+## 6.4 Capacity Reasoning (Modul Baru, UC2)
+
+RCA klasik tidak relevan untuk capacity recommendation. Tambahkan modul terpisah dengan kontrak output sendiri.
+
+```python
+@dataclass
+class CapacityRecommendation:
+    recommendation_id: str
+    timestamp: datetime
+    scope: str                  # 'rack' | 'zone' | 'site'
+    asset_ids: list[str]
+    finding: str                # 'underutilized' | 'saturating' | 'imbalanced'
+    metrics: dict               # utilization_p50, p95, headroom_pct
+    suggested_action: str       # 'consolidate', 'redistribute', 'scale_out'
+    estimated_savings: dict     # {'capacity_pct': 12.5, 'power_kw': 4.2}
+    confidence: float
+    narrative: str              # diisi LLM
+    evidence: list[dict]        # CapacityState snapshots
+```
+
+Algoritma:
+1. Konsumsi `CapacityState` dari MT-020 §6.3.
+2. Clustering workload (KMeans) per `feature_group=capacity_metrics`.
+3. Bin-packing simulator (heuristic) untuk skenario konsolidasi.
+4. LLM (`dcim_assistant`) merangkum hasil jadi narasi.
+
+## 6.5 Asset Context Enrichment
+
+`RootCauseResult` & `CapacityRecommendation` wajib di-enrich dengan `AssetContext` dari MT-020 §6.4. Penambahan field:
+
+```
+asset_context: {
+  asset_id, site, rack, zone,
+  criticality, role,
+  upstream_pdu, upstream_ups
+}
+```
+
+Manfaat:
+* UC1: alert tahu rack & criticality tier → prioritas eskalasi.
+* UC3: alert energi tahu PDU/zone terdampak → "Baris C, PDU-05" sesuai use case doc.
+* LLM bisa narasikan dengan referensi fisik.
+
+**Implementasi (v1.2.0 — selesai 20 Mei 2026):**
+
+| Komponen | Lokasi | Catatan |
+| --- | --- | --- |
+| `AssetEnricher` | `dcim_ai/inference/asset_enricher.py` | Wrapper di atas `AssetContextResolver` — best-effort, idempotent |
+| `enrich_inference(result, force=False)` | s.d.a. | Set `InferenceResult.asset_context` (object form) |
+| `enrich_rca(result, asset_id=None, force=False)` | s.d.a. | Set `RootCauseResult.asset_context` (dict form). Sumber asset_id: argumen → `metadata['asset_id']` (di-set otomatis oleh `analyze_forward()`) |
+| `enrich_capacity(recommendation, force=False)` | s.d.a. | Resolve seluruh `asset_ids` → list `AssetContext` |
+| `get_default_enricher()` / `set_default_enricher()` | s.d.a. | Singleton untuk runtime, override-able untuk testing |
+| Auto-set governance flag `asset_context_missing` | bila resolve UNKNOWN | Sesuai §6.7 |
+| Auto-set governance flag `cross_domain_power_cooling` | bila root_domain ∈ {power, cooling} & impact > 1 domain | Sesuai §6.7 |
+| Test coverage | `dcim_ai/tests/test_asset_enricher.py` | 14 test (resolve, inference enrich, RCA enrich, capacity enrich, governance flags) |
+
+## 6.6 LLM Contract Standar
+
+Untuk integrasi dengan `dcim_assistant` (MT-023), tambahkan prompt template fixed.
+
+```yaml
+prompt_template:
+  system: |
+    Anda adalah DCIM AI Assistant. Berikan analisis root cause yang ringkas,
+    teknis, dan actionable berdasarkan struktur input.
+  user_template: |
+    Incident: {incident_id} pada {timestamp}
+    Asset: {asset_context.role} di {asset_context.rack} ({asset_context.site}),
+    criticality {asset_context.criticality}
+    Mode: {mode}
+    Root domain: {root_domain} (confidence={confidence:.2f}, entropy={entropy:.2f})
+    Causal chain: {causal_chain}
+    Evidence: {explanation}
+
+    Berikan:
+    1. Penjelasan root cause dalam 2-3 kalimat.
+    2. Estimasi dampak.
+    3. Rekomendasi tindakan operator (maks 3 langkah).
+```
+
+Format output LLM dipaksa JSON (`response_format=json_object`) agar parsable downstream:
+```json
+{
+  "summary": "...",
+  "impact":  "...",
+  "actions": ["...", "...", "..."]
+}
+```
+
+### 6.6.1 Status Implementasi v1.2.0-impl-4
+
+Kontrak prompt/output sudah diimplementasikan sebagai modul deterministic contract builder dan validator. Modul ini tidak melakukan inference LLM; hanya membentuk prompt dan memvalidasi respons sebelum dipakai dashboard/incident management.
+
+| Komponen | File / API | Status |
+| --- | --- | --- |
+| System prompt fixed | `dcim_ai/llm/rca_prompt_contract.py::SYSTEM_PROMPT` | Implemented |
+| User prompt builder | `build_rca_user_prompt(rca_result)` | Implemented; menerima `RootCauseResult` atau dict-like object |
+| Chat message payload | `build_rca_chat_messages(rca_result)` | Implemented; format OpenAI/Ollama-compatible (`system`, `user`) |
+| Deterministic Ollama options | `build_ollama_options()` | Implemented; `temperature=0`, `top_p=0.9`, `num_predict=512` |
+| Output validator | `validate_rca_llm_response(raw)` | Implemented; strict JSON object dengan key persis `summary`, `impact`, `actions` |
+| Narrative dataclass | `RCAAlertNarrative` | Implemented; serializable via `to_dict()` |
+| Validation result | `LLMValidationResult` | Implemented; menyimpan `valid`, `narrative`, `errors`, `raw` |
+| Test coverage | `dcim_ai/tests/test_llm_rca_prompt_contract.py` | 9 test pass |
+
+Validasi runtime menggunakan virtual environment lokal project:
+
+- Venv aktif: `/home/infra/dcim_project/ragavenv`
+- Path lama `/home/infra/rnd_rag-anything/ragavenv` sudah dipakai hanya sebagai sumber awal migrasi.
+- Script/shebang venv hasil copy sudah diarahkan ke `/home/infra/dcim_project/ragavenv`.
+
+Aturan validator:
+- `summary` wajib string non-empty.
+- `impact` wajib string non-empty.
+- `actions` wajib list string non-empty dengan 1–3 item.
+- Key tambahan ditolak agar schema downstream stabil.
+- JSON invalid / non-object ditolak dengan error eksplisit.
+
+## 6.7 Governance Update
+
+`governance_flag` existing diperluas dengan flag baru:
+
+| Flag | Trigger |
+| --- | --- |
+| `forward_low_confidence` | mode=forward & forecast_confidence < 0.5 |
+| `cross_domain_power_cooling` | root_domain ∈ {power, cooling} & impact > 1 domain |
+| `asset_context_missing` | asset_context tidak teresolusi (NetBox down / mapping hilang) |
+
+Flag ini memicu `REVIEW` di gatekeeper sebelum alert dipublish ke incident management.
+
+## 6.8 Mapping ke Use Case
+
+| UC | Bagian Addendum yang Dipakai |
+| --- | --- |
+| UC1 | 6.2 (topology hardware), 6.3 (mode FORWARD/HYBRID), 6.5 (criticality untuk eskalasi), 6.6 (LLM contract), 6.7 (`forward_low_confidence`) |
+| UC2 | 6.4 (`CapacityRecommendation`), 6.5 (occupancy_pct), 6.6 (LLM narasi rekomendasi) |
+| UC3 | 6.2 (topology power/cooling), 6.5 (`upstream_pdu/ups`, `zone`), 6.6 (LLM contextual alert), 6.7 (`cross_domain_power_cooling`) |
+
+## 6.9 Changelog
+
+| Date       | Versi | Auth         | Note                                                                                                              |
+| ---------- | ----- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 20/05/2026 | 1.2.0 | DCIM AI Team | Topology power/cooling/hardware, predictive RCA (FORWARD/HYBRID), CapacityRecommendation, asset enrichment, LLM contract |
+

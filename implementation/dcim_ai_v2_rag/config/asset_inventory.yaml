@@ -1,0 +1,45 @@
+# Asset inventory contoh untuk StaticYamlAssetResolver.
+# File ini dibaca oleh dcim_ai/domain/asset_resolver.py.
+#
+# Override path via env: DCIM_ASSET_INVENTORY=/path/to/file.yaml
+#
+# Field yang dikenali (lihat dcim_ai/contracts/__init__.py → AssetContext):
+#   asset_id      (wajib)
+#   site
+#   rack
+#   zone
+#   criticality   (tier1 | tier2 | tier3 | unknown)
+#   role
+#   upstream_pdu
+#   upstream_ups
+# Field tambahan akan disimpan di AssetContext.extra.
+
+assets:
+  - asset_id: srv-rnd-llm
+    site: jkt-1
+    rack: R-01
+    zone: cooling_zone_1
+    criticality: tier2
+    role: ai_inference
+    upstream_pdu: PDU-01
+    upstream_ups: UPS-A
+    notes: "Server LLM untuk DCIM AI Platform"
+
+  # Contoh tambahan — silakan ganti dengan inventory aktual.
+  - asset_id: srv-db-01
+    site: jkt-1
+    rack: R-12
+    zone: cooling_zone_2
+    criticality: tier1
+    role: database
+    upstream_pdu: PDU-05
+    upstream_ups: UPS-A
+
+  - asset_id: srv-app-01
+    site: jkt-1
+    rack: R-12
+    zone: cooling_zone_2
+    criticality: tier2
+    role: compute
+    upstream_pdu: PDU-05
+    upstream_ups: UPS-A

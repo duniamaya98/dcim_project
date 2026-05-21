@@ -27,9 +27,10 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-LLAMA_CPP_DIR = PROJECT_ROOT.parent / "llama.cpp"  # /home/infra/rnd_rag-anything/llama.cpp
-BASE_MODEL = "Qwen/Qwen2.5-7B-Instruct-AWQ"
+# Handle symlinks correctly - resolve after getting parents
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
+LLAMA_CPP_DIR = PROJECT_ROOT / "llama.cpp"  # /home/infra/rnd_rag-anything/llama.cpp
+BASE_MODEL = "Qwen/Qwen2.5-3B-Instruct"  # Must match training base model
 
 
 def merge_adapter(adapter_path, output_path):
@@ -39,12 +40,25 @@ def merge_adapter(adapter_path, output_path):
     from peft import PeftModel
 
     print("[MERGE] Loading base model...")
-    base_model = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
-        torch_dtype=torch.float16,
-        device_map="cpu",  # merge on CPU to save VRAM
-        trust_remote_code=True,
-    )
+    # Try to load on GPU first, fallback to CPU if needed
+    try:
+        base_model = AutoModelForCausalLM.from_pretrained(
+            BASE_MODEL,
+            torch_dtype=torch.float16,
+            device_map="auto",  # auto device mapping (GPU if available)
+            trust_remote_code=True,
+        )
+    except ValueError as e:
+        if "AWQ" in str(e) and "CPU" in str(e):
+            print("[WARN] AWQ model detected, loading on GPU...")
+            base_model = AutoModelForCausalLM.from_pretrained(
+                BASE_MODEL,
+                torch_dtype=torch.float16,
+                device_map="cuda:0",  # force GPU for AWQ models
+                trust_remote_code=True,
+            )
+        else:
+            raise
 
     print(f"[MERGE] Loading adapter from {adapter_path}...")
     model = PeftModel.from_pretrained(base_model, adapter_path)
@@ -109,16 +123,28 @@ def convert_to_gguf(merged_path, output_gguf):
 def quantize_gguf(input_gguf, output_gguf, quant_type="Q4_K_M"):
     """Quantize GGUF model using llama.cpp quantize tool"""
 
-    quantize_bin = LLAMA_CPP_DIR / "build" / "bin" / "llama-quantize"
+    # Try multiple possible locations
+    quantize_paths = [
+        LLAMA_CPP_DIR / "build" / "bin" / "llama-quantize",
+        LLAMA_CPP_DIR / "build" / "tools" / "quantize" / "llama-quantize",
+        Path("/home/infra/llama.cpp/build/bin/llama-quantize"),
+        Path("/home/infra/llama.cpp/build/tools/quantize/llama-quantize"),
+    ]
 
-    if not quantize_bin.exists():
-        alt = Path("/home/infra/llama.cpp/build/bin/llama-quantize")
-        if alt.exists():
-            quantize_bin = alt
-        else:
-            print(f"[ERROR] llama-quantize not found. Build llama.cpp first.")
-            return None
+    quantize_bin = None
+    for path in quantize_paths:
+        if path.exists() and path.is_file():
+            quantize_bin = path
+            break
 
+    if not quantize_bin:
+        print(f"[ERROR] llama-quantize not found. Tried:")
+        for p in quantize_paths:
+            print(f"  - {p}")
+        print("Build llama.cpp first: cd llama.cpp/build && cmake --build . --target llama-quantize")
+        return None
+
+    print(f"[QUANTIZE] Using: {quantize_bin}")
     print(f"[QUANTIZE] {quant_type}: {input_gguf} → {output_gguf}")
 
     cmd = [str(quantize_bin), str(input_gguf), str(output_gguf), quant_type]
@@ -187,8 +213,14 @@ if __name__ == "__main__":
 
     if args.step in ("quantize", "all"):
         if gguf_f16.exists():
-            quantize_gguf(str(gguf_f16), str(gguf_quant), args.quant)
-            create_ollama_modelfile(str(gguf_quant), str(version_dir))
+            result = quantize_gguf(str(gguf_f16), str(gguf_quant), args.quant)
+            if result:
+                # Quantize succeeded, create Modelfile with quantized version
+                create_ollama_modelfile(str(gguf_quant), str(version_dir))
+            else:
+                # Quantize failed, create Modelfile with F16 version
+                print(f"[WARN] Quantization failed, creating Modelfile with F16 version")
+                create_ollama_modelfile(str(gguf_f16), str(version_dir))
         else:
             print(f"[SKIP] F16 GGUF not found: {gguf_f16}")
 
