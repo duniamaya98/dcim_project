@@ -1,0 +1,64 @@
+"""
+Model Specification Test Configuration
+
+Edit sesuai dengan model dan endpoint yang sedang running.
+"""
+
+# Model configurations
+MODELS = {
+    "qwen2.5-coder:1.5b": {
+        "base_url": "http://localhost:11434/v1",
+        "api_key": "ollama",
+        "platform": "ollama",
+        "enabled": True,
+    },
+    "Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M": {
+        "base_url": "http://localhost:8080/v1",
+        "api_key": "not-needed",
+        "platform": "llama.cpp",
+        "enabled": True,
+    },
+    "qwen2.5.1-coder-7b-instruct": {
+        "base_url": "http://localhost:8081/v1",
+        "api_key": "not-needed",
+        "platform": "llama.cpp",
+        "enabled": False,
+    },
+    "phi-4": {
+        "base_url": "http://localhost:8082/v1",
+        "api_key": "not-needed",
+        "platform": "llama.cpp",
+        "enabled": False,
+    },
+    "dcim-assistant-v1.0": {
+        "base_url": "http://localhost:11435/v1",
+        "api_key": "ollama",
+        "platform": "ollama",
+        "enabled": False,
+    },
+}
+
+# Default model untuk testing (sesuaikan dengan model yang sedang running)
+DEFAULT_MODEL = "Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M"
+
+# Test configuration
+TEST_CONFIG = {
+    "timeout": 60,  # seconds per test
+    "max_retries": 2,
+    "temperature": 0.3,  # Lower for deterministic results
+    "max_tokens": 1024,
+}
+
+# Scoring thresholds
+SCORING = {
+    "perfect": 1.0,
+    "good": 0.75,
+    "acceptable": 0.5,
+    "poor": 0.25,
+    "failed": 0.0,
+}
+
+# Output paths
+OUTPUT_DIR = "results"
+RAW_DIR = "results/raw"
+REPORT_DIR = "results/reports"

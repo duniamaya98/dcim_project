@@ -125,3 +125,6 @@ dmypy.json
 # Artifacts
 artifacts/
 outputs/
+
+# Test results (generated)
+model_specification_test/results/
