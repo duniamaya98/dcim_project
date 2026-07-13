@@ -9,6 +9,7 @@ Mengukur kemampuan model untuk:
 
 import json
 import re
+from typing import Dict, Any
 from openai import OpenAI
 
 
@@ -207,3 +208,51 @@ def _serialize_tool_calls(tool_calls) -> list:
                 "arguments": tc.function.arguments,
             })
     return result
+
+
+def run_single_test(client: OpenAI, model: str, test_def: Dict, test_config: Dict) -> Dict[str, Any]:
+    """
+    Run single test case untuk level-based testing.
+
+    Args:
+        client: OpenAI client
+        model: Model name
+        test_def: Test definition dari level_test_definitions.py
+        test_config: Test configuration
+
+    Returns:
+        Dict dengan score dan details
+    """
+    try:
+        # Build messages
+        messages = [{"role": "user", "content": test_def["prompt"]}]
+
+        # Call the model with tools
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=TOOLS,
+            tool_choice="auto",
+            temperature=test_config.get("temperature", 0.3),
+            max_tokens=test_config.get("max_tokens", 1024),
+        )
+
+        message = response.choices[0].message
+        tool_calls = message.tool_calls if hasattr(message, 'tool_calls') else None
+
+        # Evaluate using existing evaluation logic
+        score = _evaluate_tool_call(test_def, tool_calls)
+
+        return {
+            "score": score,
+            "test_name": test_def["name"],
+            "tool_calls": _serialize_tool_calls(tool_calls) if tool_calls else [],
+            "expected": test_def.get("expected_tool", test_def.get("expected_tools")),
+        }
+
+    except Exception as e:
+        return {
+            "score": 0.0,
+            "test_name": test_def["name"],
+            "error": str(e),
+        }
