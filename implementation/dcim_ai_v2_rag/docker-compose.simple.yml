@@ -1,0 +1,107 @@
+# Simplified Docker Compose - Uses External Infrastructure
+# TimescaleDB: 10.70.0.56:5433
+# Kafka: 10.70.0.56:9092
+# Redis: TBD
+
+services:
+  # ============================================================================
+  # FastAPI Application Server
+  # ============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: dcim-analytics-api
+    ports:
+      - "8000:8000"
+    environment:
+      # API Config
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      DEBUG: "true"
+
+      # External TimescaleDB (Syauqi's infra)
+      TIMESCALEDB_HOST: "10.70.0.56"
+      TIMESCALEDB_PORT: "5433"
+      TIMESCALEDB_DATABASE: "timescale_db"
+      TIMESCALEDB_USER: "ai_user"
+      TIMESCALEDB_PASSWORD: "${TIMESCALEDB_PASSWORD:?Set TIMESCALEDB_PASSWORD in .env}"
+      TIMESCALEDB_SSLMODE: "disable"
+
+      # External Kafka (Syauqi's infra)
+      KAFKA_BOOTSTRAP_SERVERS: "10.70.0.56:9092"
+      KAFKA_CONSUMER_GROUP: "dcim-analytics-api"
+
+      # Redis (optional, stub for now)
+      REDIS_HOST: "localhost"
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+
+      # JWT
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}"
+      JWT_ALGORITHM: "HS256"
+      JWT_EXPIRATION_MINUTES: "60"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - dcim-network
+
+  # ============================================================================
+  # Metrics Consumer (Kafka → TimescaleDB)
+  # ============================================================================
+  metrics-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: dcim-metrics-consumer
+    command: ["python", "-m", "stream.metrics_consumer"]
+    environment:
+      TIMESCALEDB_HOST: "10.70.0.56"
+      TIMESCALEDB_PORT: "5433"
+      TIMESCALEDB_DATABASE: "timescale_db"
+      TIMESCALEDB_USER: "ai_user"
+      TIMESCALEDB_PASSWORD: "${TIMESCALEDB_PASSWORD:?Set TIMESCALEDB_PASSWORD in .env}"
+
+      KAFKA_BOOTSTRAP_SERVERS: "10.70.0.56:9092"
+      KAFKA_INPUT_TOPIC: "dcim.analytics.metrics"
+      KAFKA_CONSUMER_GROUP: "dcim-metrics-consumer"
+
+      LOG_LEVEL: "INFO"
+    restart: unless-stopped
+    networks:
+      - dcim-network
+
+  # ============================================================================
+  # Anomaly Detector (Real-time Z-score)
+  # ============================================================================
+  anomaly-detector:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: dcim-anomaly-detector
+    command: ["python", "-m", "stream.anomaly_detector"]
+    environment:
+      TIMESCALEDB_HOST: "10.70.0.56"
+      TIMESCALEDB_PORT: "5433"
+      TIMESCALEDB_DATABASE: "timescale_db"
+      TIMESCALEDB_USER: "ai_user"
+      TIMESCALEDB_PASSWORD: "${TIMESCALEDB_PASSWORD:?Set TIMESCALEDB_PASSWORD in .env}"
+
+      KAFKA_BOOTSTRAP_SERVERS: "10.70.0.56:9092"
+      KAFKA_OUTPUT_TOPIC: "dcim.analytics.anomalies"
+      KAFKA_PRODUCER_GROUP: "dcim-anomaly-detector"
+
+      ANOMALY_THRESHOLD: "3.0"
+      WINDOW_SIZE: "100"
+      LOG_LEVEL: "INFO"
+    restart: unless-stopped
+    networks:
+      - dcim-network
+
+networks:
+  dcim-network:
+    driver: bridge

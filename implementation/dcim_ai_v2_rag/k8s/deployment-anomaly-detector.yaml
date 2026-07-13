@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: anomaly-detector
+  namespace: dcim-analytics
+  labels:
+    app: anomaly-detector
+    component: detection
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: anomaly-detector
+  template:
+    metadata:
+      labels:
+        app: anomaly-detector
+        component: detection
+    spec:
+      containers:
+      - name: detector
+        image: dcim-analytics-consumer:latest
+        imagePullPolicy: IfNotPresent
+        command: ["python", "-m", "stream.anomaly_detector"]
+        envFrom:
+        - configMapRef:
+            name: analytics-config
+        - secretRef:
+            name: analytics-secrets
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"

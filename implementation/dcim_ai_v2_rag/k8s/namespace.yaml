@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dcim-analytics
+  labels:
+    name: dcim-analytics
+    environment: production
