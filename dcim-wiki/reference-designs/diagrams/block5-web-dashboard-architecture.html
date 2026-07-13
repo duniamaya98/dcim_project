@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCIM Block 5 — Web Dashboard Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 1100px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>DCIM Block 5 — Web Dashboard</h1>
+      </div>
+      <p class="subtitle">Reference Architecture • Vue 3 • API Gateway • RBAC/SSO • NOC • SOC • Facilities • CMDB Explorer • SLA/KPI • Logs • Task Board</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 950">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b" /></marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" /></marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#34d399" /></marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" /></marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" /></marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" /></marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ZONE: Frontend (Top) -->
+        <rect x="20" y="20" width="1160" height="200" rx="12" fill="rgba(8, 51, 68, 0.08)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="32" y="40" fill="#22d3ee" font-size="11" font-weight="600">Frontend — Vue 3 + Vite + Tailwind + ECharts + D3.js</text>
+
+        <!-- NOC View -->
+        <rect x="40" y="55" width="140" height="70" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="110" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">NOC View</text>
+        <text x="110" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">Real-time Health</text>
+        <text x="110" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Alerts • Capacity • Uptime</text>
+        <text x="110" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">5s auto-refresh</text>
+
+        <!-- SOC View -->
+        <rect x="195" y="55" width="140" height="70" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="265" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">SOC View</text>
+        <text x="265" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">Security Events</text>
+        <text x="265" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Incidents • Compliance</text>
+        <text x="265" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">10s auto-refresh</text>
+
+        <!-- Facilities View -->
+        <rect x="350" y="55" width="140" height="70" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="420" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Facilities View</text>
+        <text x="420" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">Power • Cooling</text>
+        <text x="420" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Environment • Rack Map</text>
+        <text x="420" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">30s auto-refresh</text>
+
+        <!-- CMDB Explorer -->
+        <rect x="505" y="55" width="150" height="70" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="580" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">CMDB Explorer</text>
+        <text x="580" y="92" fill="#fbbf24" font-size="8" text-anchor="middle">Topology Graph (D3)</text>
+        <text x="580" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">CI Search • Impact View</text>
+        <text x="580" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Relationship Editor</text>
+
+        <!-- SLA/KPI -->
+        <rect x="670" y="55" width="130" height="70" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="735" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">SLA/KPI</text>
+        <text x="735" y="92" fill="#34d399" font-size="8" text-anchor="middle">Compliance Tracking</text>
+        <text x="735" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Trend Analysis</text>
+        <text x="735" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">5min refresh</text>
+
+        <!-- Log Viewer -->
+        <rect x="815" y="55" width="130" height="70" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="880" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Log Viewer</text>
+        <text x="880" y="92" fill="#fb7185" font-size="8" text-anchor="middle">Centralized Search</text>
+        <text x="880" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Filter • Correlate</text>
+        <text x="880" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Export CSV/JSON</text>
+
+        <!-- Task Board -->
+        <rect x="960" y="55" width="130" height="70" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="1025" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Task Board</text>
+        <text x="1025" y="92" fill="#fb923c" font-size="8" text-anchor="middle">Kanban Workflow</text>
+        <text x="1025" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">SLA Countdown</text>
+        <text x="1025" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Drag & Drop</text>
+
+        <!-- Auth badge -->
+        <rect x="40" y="140" width="110" height="40" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="95" y="157" fill="#fb7185" font-size="8" font-weight="600" text-anchor="middle">RBAC/SSO</text>
+        <text x="95" y="170" fill="#94a3b8" font-size="7" text-anchor="middle">JWT + OIDC</text>
+
+        <!-- Responsive badge -->
+        <rect x="160" y="140" width="110" height="40" rx="4" fill="rgba(34, 211, 238, 0.2)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="215" y="157" fill="#22d3ee" font-size="8" font-weight="600" text-anchor="middle">Responsive</text>
+        <text x="215" y="170" fill="#94a3b8" font-size="7" text-anchor="middle">Desktop • Tablet • Mobile</text>
+
+        <!-- WebSocket badge -->
+        <rect x="280" y="140" width="110" height="40" rx="4" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1"/>
+        <text x="335" y="157" fill="#34d399" font-size="8" font-weight="600" text-anchor="middle">WebSocket</text>
+        <text x="335" y="170" fill="#94a3b8" font-size="7" text-anchor="middle">Real-time push</text>
+
+        <!-- ZONE: API Gateway -->
+        <rect x="20" y="240" width="1160" height="90" rx="12" fill="rgba(251, 191, 36, 0.06)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="32" y="260" fill="#fbbf24" font-size="11" font-weight="600">API Gateway (FastAPI)</text>
+
+        <rect x="40" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="100" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">Auth + JWT</text>
+
+        <rect x="175" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="235" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">Rate Limiting</text>
+
+        <rect x="310" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="370" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">RBAC Check</text>
+
+        <rect x="445" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="505" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">CORS + CSP</text>
+
+        <rect x="580" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="640" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">Response Cache</text>
+
+        <rect x="715" y="275" width="120" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="775" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">Request Logging</text>
+
+        <rect x="850" y="275" width="140" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="920" y="300" fill="white" font-size="8" font-weight="600" text-anchor="middle">Circuit Breaker</text>
+
+        <!-- ZONE: Backend Services -->
+        <rect x="20" y="350" width="1160" height="150" rx="12" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="370" fill="#34d399" font-size="11" font-weight="600">Backend Services (Phase 1 APIs)</text>
+
+        <rect x="40" y="390" width="130" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="105" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">CMDB API</text>
+        <text x="105" y="427" fill="#a78bfa" font-size="8" text-anchor="middle">CI CRUD</text>
+        <text x="105" y="439" fill="#a78bfa" font-size="8" text-anchor="middle">Topology</text>
+        <text x="105" y="451" fill="#a78bfa" font-size="8" text-anchor="middle">Impact</text>
+        <text x="105" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/cmdb</text>
+
+        <rect x="185" y="390" width="130" height="90" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="250" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">Asset API</text>
+        <text x="250" y="427" fill="#a78bfa" font-size="8" text-anchor="middle">CRUD</text>
+        <text x="250" y="439" fill="#a78bfa" font-size="8" text-anchor="middle">Enrichment</text>
+        <text x="250" y="451" fill="#a78bfa" font-size="8" text-anchor="middle">Audit Trail</text>
+        <text x="250" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/assets</text>
+
+        <rect x="330" y="390" width="130" height="90" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="395" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">Analytics API</text>
+        <text x="395" y="427" fill="#fbbf24" font-size="8" text-anchor="middle">Metrics</text>
+        <text x="395" y="439" fill="#fbbf24" font-size="8" text-anchor="middle">Forecasting</text>
+        <text x="395" y="451" fill="#fbbf24" font-size="8" text-anchor="middle">Anomaly</text>
+        <text x="395" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/analytics</text>
+
+        <rect x="475" y="390" width="130" height="90" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="540" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">SIEM API</text>
+        <text x="540" y="427" fill="#fb7185" font-size="8" text-anchor="middle">Events</text>
+        <text x="540" y="439" fill="#fb7185" font-size="8" text-anchor="middle">Incidents</text>
+        <text x="540" y="451" fill="#fb7185" font-size="8" text-anchor="middle">Compliance</text>
+        <text x="540" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/siem</text>
+
+        <rect x="620" y="390" width="130" height="90" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="685" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">Workflow API</text>
+        <text x="685" y="427" fill="#22d3ee" font-size="8" text-anchor="middle">Tasks</text>
+        <text x="685" y="439" fill="#22d3ee" font-size="8" text-anchor="middle">Approvals</text>
+        <text x="685" y="451" fill="#22d3ee" font-size="8" text-anchor="middle">Escalation</text>
+        <text x="685" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/workflow</text>
+
+        <rect x="765" y="390" width="130" height="90" rx="6" fill="rgba(34, 211, 238, 0.3)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="830" y="412" fill="white" font-size="10" font-weight="600" text-anchor="middle">Dashboard API</text>
+        <text x="830" y="427" fill="#22d3ee" font-size="8" text-anchor="middle">Aggregated</text>
+        <text x="830" y="439" fill="#22d3ee" font-size="8" text-anchor="middle">NOC/SOC/FC</text>
+        <text x="830" y="451" fill="#22d3ee" font-size="8" text-anchor="middle">Health</text>
+        <text x="830" y="463" fill="#94a3b8" font-size="7" text-anchor="middle">:8000/api/v1/dashboard</text>
+
+        <!-- ZONE: Data Layer -->
+        <rect x="20" y="520" width="1160" height="120" rx="12" fill="rgba(76, 29, 149, 0.06)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="540" fill="#a78bfa" font-size="11" font-weight="600">Data Stores</text>
+
+        <rect x="40" y="560" width="140" height="60" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="110" y="582" fill="white" font-size="10" font-weight="600" text-anchor="middle">PostgreSQL 16</text>
+        <text x="110" y="597" fill="#a78bfa" font-size="8" text-anchor="middle">CMDB + Asset + Lineage</text>
+
+        <rect x="200" y="560" width="120" height="60" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="260" y="582" fill="white" font-size="10" font-weight="600" text-anchor="middle">Redis 7</text>
+        <text x="260" y="597" fill="#fbbf24" font-size="8" text-anchor="middle">Cache + Session</text>
+
+        <rect x="340" y="560" width="140" height="60" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="410" y="582" fill="white" font-size="10" font-weight="600" text-anchor="middle">Elasticsearch</text>
+        <text x="410" y="597" fill="#a78bfa" font-size="8" text-anchor="middle">Logs + SIEM</text>
+
+        <rect x="500" y="560" width="120" height="60" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="560" y="582" fill="white" font-size="10" font-weight="600" text-anchor="middle">Kafka</text>
+        <text x="560" y="597" fill="#fb923c" font-size="8" text-anchor="middle">Event Streams</text>
+
+        <rect x="640" y="560" width="120" height="60" rx="6" fill="rgba(52, 211, 153, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="700" y="582" fill="white" font-size="10" font-weight="600" text-anchor="middle">Prometheus</text>
+        <text x="700" y="597" fill="#34d399" font-size="8" text-anchor="middle">Metrics</text>
+
+        <!-- ZONE: External -->
+        <rect x="20" y="660" width="1160" height="80" rx="12" fill="rgba(30, 41, 59, 0.1)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="680" fill="#94a3b8" font-size="11" font-weight="600">External Integrations</text>
+
+        <rect x="40" y="695" width="110" height="35" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="95" y="717" fill="white" font-size="8" text-anchor="middle">Keycloak/Auth0</text>
+
+        <rect x="165" y="695" width="100" height="35" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="215" y="717" fill="white" font-size="8" text-anchor="middle">BMS/EPMS</text>
+
+        <rect x="280" y="695" width="100" height="35" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="330" y="717" fill="white" font-size="8" text-anchor="middle">NMS</text>
+
+        <rect x="395" y="695" width="100" height="35" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="445" y="717" fill="white" font-size="8" text-anchor="middle">Wazuh</text>
+
+        <rect x="510" y="695" width="100" height="35" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="560" y="717" fill="white" font-size="8" text-anchor="middle">Grafana</text>
+
+        <!-- CONNECTIONS -->
+        <line x1="110" y1="125" x2="110" y2="238" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="265" y1="125" x2="235" y2="238" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="420" y1="125" x2="370" y2="238" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="580" y1="125" x2="505" y2="238" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="735" y1="125" x2="640" y2="238" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="880" y1="125" x2="775" y2="238" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+        <line x1="1025" y1="125" x2="920" y2="238" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+        <!-- Gateway → Backend -->
+        <line x1="105" y1="315" x2="105" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="250" y1="315" x2="250" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="395" y1="315" x2="395" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="540" y1="315" x2="540" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="685" y1="315" x2="685" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="830" y1="315" x2="830" y2="388" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+
+        <!-- Backend → Data -->
+        <line x1="105" y1="480" x2="110" y2="558" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <line x1="250" y1="480" x2="260" y2="558" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="540" y1="480" x2="410" y2="558" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <line x1="685" y1="480" x2="560" y2="558" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+        <!-- LEGEND -->
+        <rect x="20" y="770" width="1160" height="80" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="32" y="790" fill="white" font-size="10" font-weight="600">Legend</text>
+        <rect x="32" y="802" width="16" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="54" y="810" fill="#94a3b8" font-size="8">Frontend Views</text>
+        <rect x="162" y="802" width="16" height="10" rx="2" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="184" y="810" fill="#94a3b8" font-size="8">API Gateway / Cache</text>
+        <rect x="332" y="802" width="16" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="354" y="810" fill="#94a3b8" font-size="8">Backend Services</text>
+        <rect x="482" y="802" width="16" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="504" y="810" fill="#94a3b8" font-size="8">Database</text>
+        <rect x="582" y="802" width="16" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="604" y="810" fill="#94a3b8" font-size="8">Security / Logs</text>
+        <text x="32" y="835" fill="#94a3b8" font-size="7">7 Views • API Gateway (Auth+Rate+RBAC+Cache) • 6 Backend APIs • 5 Data Stores • SSO/OIDC</text>
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot cyan"></div><h3>7 Dashboard Views</h3></div>
+        <ul>
+          <li>• NOC — Real-time infrastructure health, alerts</li>
+          <li>• SOC — Security events, incidents, compliance</li>
+          <li>• Facilities — Power, cooling, environment</li>
+          <li>• CMDB Explorer — Interactive topology graph</li>
+          <li>• SLA/KPI — Compliance, trends, MTTR/MTBF</li>
+          <li>• Log Viewer — Centralized search + export</li>
+          <li>• Task Board — Kanban with SLA countdown</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot amber"></div><h3>API Gateway Features</h3></div>
+        <ul>
+          <li>• JWT validation + SSO/OIDC</li>
+          <li>• Rate limiting (100/min read, 20/min write)</li>
+          <li>• RBAC (6 roles, resource-level)</li>
+          <li>• Response cache (5s-60s TTL)</li>
+          <li>• Circuit breaker per service</li>
+          <li>• CORS + CSP headers</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot emerald"></div><h3>Frontend Stack</h3></div>
+        <ul>
+          <li>• Vue 3 + Composition API</li>
+          <li>• Pinia state management</li>
+          <li>• ECharts (charts) + D3.js (topology)</li>
+          <li>• Tailwind CSS (dark theme)</li>
+          <li>• Vite (build) + TypeScript</li>
+          <li>• WebSocket (real-time push)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot violet"></div><h3>CMDB Explorer</h3></div>
+        <ul>
+          <li>• Interactive D3.js topology graph</li>
+          <li>• Node styling by type + status color</li>
+          <li>• Zoom/Pan/Drag/Click</li>
+          <li>• Depth-limited BFS traversal</li>
+          <li>• Impact analysis mode</li>
+          <li>• CI search + filter panel</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot rose"></div><h3>Security</h3></div>
+        <ul>
+          <li>• SSO: Keycloak / Auth0 / Azure AD</li>
+          <li>• JWT token + silent refresh</li>
+          <li>• 6 RBAC roles</li>
+          <li>• Vue Router guards</li>
+          <li>• XSS/CSRF/CSP protection</li>
+          <li>• npm audit in CI</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot orange"></div><h3>Responsive + Performance</h3></div>
+        <ul>
+          <li>• 3 breakpoints: mobile/tablet/desktop</li>
+          <li>• Code splitting (lazy load views)</li>
+          <li>• Virtual scrolling (log tables)</li>
+          <li>• Debounced search (300ms)</li>
+          <li>• Lighthouse target: > 80</li>
+          <li>• Bundle < 500KB gzipped</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">DCIM Core Platform • Block 5 Web Dashboard • Reference Architecture • Generated 2026-06-23</p>
+  </div>
+</body>
+</html>

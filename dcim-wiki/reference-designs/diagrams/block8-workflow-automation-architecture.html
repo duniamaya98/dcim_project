@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCIM Block 8 — Workflow Automation Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'JetBrains Mono', monospace; background: #020617; min-height: 100vh; padding: 2rem; color: white; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container { background: rgba(15, 23, 42, 0.5); border-radius: 1rem; border: 1px solid #1e293b; padding: 1.5rem; overflow-x: auto; }
+    svg { width: 100%; min-width: 1100px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>DCIM Block 8 — Workflow Automation</h1>
+      </div>
+      <p class="subtitle">Reference Architecture • State Machine • ITSM • Approvals • Runbook • Auto-Remediation • Escalation • n8n/Temporal</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 900">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#64748b" /></marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" /></marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#34d399" /></marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" /></marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" /></marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" /></marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/></pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ZONE: Triggers (Left) -->
+        <rect x="20" y="20" width="160" height="340" rx="12" fill="rgba(30, 41, 59, 0.1)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="40" fill="#94a3b8" font-size="11" font-weight="600">Triggers</text>
+
+        <rect x="35" y="55" width="130" height="40" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="100" y="80" fill="white" font-size="9" text-anchor="middle">Alert (SIEM)</text>
+
+        <rect x="35" y="105" width="130" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="100" y="130" fill="white" font-size="9" text-anchor="middle">Alert (Analytics)</text>
+
+        <rect x="35" y="155" width="130" height="40" rx="4" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="100" y="180" fill="white" font-size="9" text-anchor="middle">Manual Request</text>
+
+        <rect x="35" y="205" width="130" height="40" rx="4" fill="rgba(52, 211, 153, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="100" y="230" fill="white" font-size="9" text-anchor="middle">Scheduled (Cron)</text>
+
+        <rect x="35" y="255" width="130" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="100" y="280" fill="white" font-size="9" text-anchor="middle">Event (DI&I)</text>
+
+        <rect x="35" y="305" width="130" height="40" rx="4" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="100" y="330" fill="white" font-size="9" text-anchor="middle">Webhook (External)</text>
+
+        <!-- ZONE: State Machine -->
+        <rect x="200" y="20" width="200" height="340" rx="12" fill="rgba(34, 211, 238, 0.06)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="212" y="40" fill="#22d3ee" font-size="11" font-weight="600">State Machine</text>
+
+        <!-- States -->
+        <rect x="215" y="55" width="80" height="30" rx="4" fill="rgba(34, 211, 238, 0.2)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="255" y="74" fill="white" font-size="8" text-anchor="middle">pending</text>
+
+        <line x1="295" y1="70" x2="315" y2="70" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowhead-cyan)"/>
+
+        <rect x="317" y="55" width="80" height="30" rx="4" fill="rgba(34, 211, 238, 0.3)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="357" y="74" fill="white" font-size="8" text-anchor="middle">in_progress</text>
+
+        <line x1="357" y1="85" x2="357" y2="100" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowhead-cyan)"/>
+
+        <rect x="317" y="102" width="80" height="30" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="357" y="121" fill="white" font-size="8" text-anchor="middle">wait_approve</text>
+
+        <line x1="397" y1="117" x2="400" y2="117" stroke="#fbbf24" stroke-width="1"/>
+
+        <rect x="215" y="142" width="80" height="30" rx="4" fill="rgba(52, 211, 153, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="255" y="161" fill="#34d399" font-size="8" text-anchor="middle">approved</text>
+
+        <rect x="215" y="182" width="80" height="30" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="255" y="201" fill="#fb7185" font-size="8" text-anchor="middle">rejected</text>
+
+        <rect x="317" y="182" width="80" height="30" rx="4" fill="rgba(34, 211, 238, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="357" y="201" fill="white" font-size="8" text-anchor="middle">executing</text>
+
+        <line x1="357" y1="212" x2="357" y2="227" stroke="#22d3ee" stroke-width="1" marker-end="url(#arrowhead-cyan)"/>
+
+        <rect x="317" y="229" width="80" height="30" rx="4" fill="rgba(52, 211, 153, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="357" y="248" fill="white" font-size="8" text-anchor="middle">completed</text>
+
+        <rect x="215" y="229" width="80" height="30" rx="4" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="255" y="248" fill="white" font-size="8" text-anchor="middle">failed</text>
+
+        <rect x="215" y="269" width="80" height="30" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="255" y="288" fill="#fbbf24" font-size="8" text-anchor="middle">rollback</text>
+
+        <rect x="317" y="269" width="80" height="30" rx="4" fill="rgba(100, 116, 139, 0.3)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="357" y="288" fill="#94a3b8" font-size="8" text-anchor="middle">cancelled</text>
+
+        <text x="212" y="325" fill="#94a3b8" font-size="7">10 states • Validated transitions</text>
+        <text x="212" y="337" fill="#94a3b8" font-size="7">State persistence (PostgreSQL)</text>
+        <text x="212" y="349" fill="#94a3b8" font-size="7">Audit trail per transition</text>
+
+        <!-- ZONE: Automation Services (Center) -->
+        <rect x="420" y="20" width="560" height="340" rx="12" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="432" y="40" fill="#34d399" font-size="11" font-weight="600">Automation Services</text>
+
+        <!-- ITSM -->
+        <rect x="435" y="55" width="130" height="80" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="500" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">ITSM Ticketing</text>
+        <text x="500" y="92" fill="#a78bfa" font-size="8" text-anchor="middle">ServiceNow / Jira</text>
+        <text x="500" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Auto-create tickets</text>
+        <text x="500" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Bidirectional sync</text>
+        <text x="500" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">SLA tracking</text>
+
+        <!-- Approval -->
+        <rect x="580" y="55" width="130" height="80" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="645" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Approvals</text>
+        <text x="645" y="92" fill="#fbbf24" font-size="8" text-anchor="middle">Multi-level chains</text>
+        <text x="645" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Role-based approvers</text>
+        <text x="645" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Timeout escalation</text>
+        <text x="645" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">Batch approve</text>
+
+        <!-- Runbook -->
+        <rect x="725" y="55" width="130" height="80" rx="6" fill="rgba(34, 211, 238, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="790" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Runbook Engine</text>
+        <text x="790" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">Predefined procedures</text>
+        <text x="790" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Automated + manual steps</text>
+        <text x="790" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Conditional logic</text>
+        <text x="790" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">Rollback on failure</text>
+
+        <!-- Auto-Remediation -->
+        <rect x="435" y="150" width="155" height="80" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="512" y="172" fill="white" font-size="10" font-weight="600" text-anchor="middle">Auto-Remediation</text>
+        <text x="512" y="187" fill="#fb7185" font-size="8" text-anchor="middle">Alert → Action flow</text>
+        <text x="512" y="199" fill="#94a3b8" font-size="7" text-anchor="middle">Blast radius check</text>
+        <text x="512" y="211" fill="#94a3b8" font-size="7" text-anchor="middle">Approval for critical</text>
+        <text x="512" y="223" fill="#94a3b8" font-size="7" text-anchor="middle">Rollback capability</text>
+
+        <!-- Escalation -->
+        <rect x="605" y="150" width="155" height="80" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="682" y="172" fill="white" font-size="10" font-weight="600" text-anchor="middle">Escalation Rules</text>
+        <text x="682" y="187" fill="#fb923c" font-size="8" text-anchor="middle">Time-based escalation</text>
+        <text x="682" y="199" fill="#94a3b8" font-size="7" text-anchor="middle">Severity-based routing</text>
+        <text x="682" y="211" fill="#94a3b8" font-size="7" text-anchor="middle">On-call schedule</text>
+        <text x="682" y="223" fill="#94a3b8" font-size="7" text-anchor="middle">4-level matrix</text>
+
+        <!-- n8n/Temporal -->
+        <rect x="775" y="150" width="155" height="80" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="852" y="172" fill="white" font-size="10" font-weight="600" text-anchor="middle">n8n / Temporal</text>
+        <text x="852" y="187" fill="#fbbf24" font-size="8" text-anchor="middle">Visual workflow builder</text>
+        <text x="852" y="199" fill="#94a3b8" font-size="7" text-anchor="middle">n8n: simple automations</text>
+        <text x="852" y="211" fill="#94a3b8" font-size="7" text-anchor="middle">Temporal: complex flows</text>
+        <text x="852" y="223" fill="#94a3b8" font-size="7" text-anchor="middle">Webhook + REST API</text>
+
+        <!-- Workflow Types -->
+        <rect x="435" y="250" width="495" height="80" rx="8" fill="rgba(34, 211, 238, 0.06)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="447" y="268" fill="#22d3ee" font-size="10" font-weight="600">Workflow Types</text>
+
+        <rect x="445" y="278" width="90" height="35" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="490" y="300" fill="white" font-size="7" text-anchor="middle">Incident</text>
+
+        <rect x="545" y="278" width="90" height="35" rx="4" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="590" y="300" fill="white" font-size="7" text-anchor="middle">Change Mgmt</text>
+
+        <rect x="645" y="278" width="90" height="35" rx="4" fill="rgba(52, 211, 153, 0.3)" stroke="#34d399" stroke-width="1"/>
+        <text x="690" y="300" fill="white" font-size="7" text-anchor="middle">Remediation</text>
+
+        <rect x="745" y="278" width="90" height="35" rx="4" fill="rgba(34, 211, 238, 0.3)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="790" y="300" fill="white" font-size="7" text-anchor="middle">Provisioning</text>
+
+        <rect x="845" y="278" width="75" height="35" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="882" y="300" fill="white" font-size="7" text-anchor="middle">Compliance</text>
+
+        <!-- ZONE: Notification Layer -->
+        <rect x="420" y="380" width="560" height="100" rx="12" fill="rgba(251, 146, 60, 0.06)" stroke="#fb923c" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="432" y="400" fill="#fb923c" font-size="11" font-weight="600">Notification Layer</text>
+
+        <rect x="435" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="475" y="440" fill="white" font-size="8" text-anchor="middle">Email</text>
+
+        <rect x="525" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="565" y="440" fill="white" font-size="8" text-anchor="middle">Slack</text>
+
+        <rect x="615" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="655" y="440" fill="white" font-size="8" text-anchor="middle">Teams</text>
+
+        <rect x="705" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="745" y="440" fill="white" font-size="8" text-anchor="middle">SMS</text>
+
+        <rect x="795" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="835" y="440" fill="white" font-size="8" text-anchor="middle">PagerDuty</text>
+
+        <rect x="885" y="415" width="80" height="40" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="925" y="440" fill="white" font-size="8" text-anchor="middle">Webhook</text>
+
+        <!-- ZONE: External Systems -->
+        <rect x="20" y="380" width="380" height="100" rx="12" fill="rgba(30, 41, 59, 0.1)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="400" fill="#94a3b8" font-size="11" font-weight="600">External Systems</text>
+
+        <rect x="35" y="415" width="100" height="40" rx="4" fill="rgba(76, 29, 149, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="85" y="440" fill="white" font-size="8" text-anchor="middle">CMDB</text>
+
+        <rect x="145" y="415" width="100" height="40" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="195" y="440" fill="white" font-size="8" text-anchor="middle">SIEM/SOC</text>
+
+        <rect x="255" y="415" width="100" height="40" rx="4" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="305" y="440" fill="white" font-size="8" text-anchor="middle">Analytics</text>
+
+        <!-- CONNECTIONS -->
+        <line x1="165" y1="75" x2="213" y2="70" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+        <line x1="165" y1="130" x2="213" y2="115" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="165" y1="180" x2="213" y2="70" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+
+        <!-- State Machine → Services -->
+        <line x1="400" y1="117" x2="433" y2="95" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="400" y1="200" x2="433" y2="190" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+
+        <!-- Services → Notifications -->
+        <line x1="512" y1="230" x2="475" y2="413" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead)"/>
+        <line x1="682" y1="230" x2="565" y2="413" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead)"/>
+        <line x1="790" y1="230" x2="655" y2="413" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead)"/>
+
+        <!-- External → Services -->
+        <line x1="85" y1="415" x2="500" y2="135" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-violet)"/>
+        <line x1="195" y1="415" x2="790" y2="135" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-rose)"/>
+        <line x1="305" y1="415" x2="852" y2="230" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#arrowhead-amber)"/>
+
+        <!-- LEGEND -->
+        <rect x="20" y="500" width="1160" height="80" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="32" y="520" fill="white" font-size="10" font-weight="600">Legend</text>
+        <rect x="32" y="532" width="16" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="54" y="540" fill="#94a3b8" font-size="8">Triggers / External</text>
+        <rect x="182" y="532" width="16" height="10" rx="2" fill="rgba(34, 211, 238, 0.3)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="204" y="540" fill="#94a3b8" font-size="8">State Machine</text>
+        <rect x="312" y="532" width="16" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="334" y="540" fill="#94a3b8" font-size="8">Automation Services</text>
+        <rect x="482" y="532" width="16" height="10" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="504" y="540" fill="#94a3b8" font-size="8">Notifications</text>
+        <rect x="602" y="532" width="16" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="624" y="540" fill="#94a3b8" font-size="8">Security / Alerts</text>
+        <rect x="752" y="532" width="16" height="10" rx="2" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="774" y="540" fill="#94a3b8" font-size="8">Approvals / Orchestration</text>
+        <text x="32" y="568" fill="#94a3b8" font-size="7">10 States • 6 Automation Services • 7 Workflow Types • 6 Notification Channels • n8n/Temporal Integration</text>
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header"><div class="card-dot cyan"></div><h3>State Machine (10 states)</h3></div>
+        <ul>
+          <li>• pending → in_progress → waiting_approval</li>
+          <li>• approved → executing → completed/failed</li>
+          <li>• rejected, rollback, cancelled</li>
+          <li>• Validated transitions only</li>
+          <li>• PostgreSQL state persistence</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot violet"></div><h3>ITSM Integration</h3></div>
+        <ul>
+          <li>• ServiceNow + Jira bidirectional</li>
+          <li>• Auto-create tickets from alerts</li>
+          <li>• Priority mapping (P1→Critical)</li>
+          <li>• Status sync (workflow ↔ ticket)</li>
+          <li>• SLA tracking</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot amber"></div><h3>Approval Workflows</h3></div>
+        <ul>
+          <li>• Multi-level chains (1-3 levels)</li>
+          <li>• Role-based approvers</li>
+          <li>• Timeout escalation</li>
+          <li>• Batch approval support</li>
+          <li>• 4 chain types (standard→critical)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot cyan"></div><h3>Runbook Engine</h3></div>
+        <ul>
+          <li>• Automated + manual steps</li>
+          <li>• Conditional logic (on_failure)</li>
+          <li>• Template variables ({{workflow.*}})</li>
+          <li>• Rollback procedures</li>
+          <li>• Audit trail per step</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot rose"></div><h3>Auto-Remediation + Escalation</h3></div>
+        <ul>
+          <li>• Safety: blast radius, approval, rate limit</li>
+         • 4 remediation rules defined</li>
+          <li>• Rollback on failure</li>
+          <li>• 4-level escalation matrix</li>
+          <li>• On-call schedule integration</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-dot orange"></div><h3>n8n/Temporal + Notifications</h3></div>
+        <ul>
+          <li>• n8n: visual, simple automations</li>
+          <li>• Temporal: complex, long-running</li>
+          <li>• 6 notification channels</li>
+          <li>• Webhook + REST API triggers</li>
+          <li>• 7 workflow types defined</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">DCIM Core Platform • Block 8 Workflow Automation • Reference Architecture • Generated 2026-06-23</p>
+  </div>
+</body>
+</html>

@@ -60,6 +60,9 @@ implementation/dcim_ai_v2_rag/k8s/secret.yaml
 .rtk/
 unsloth_compiled_cache/
 
+# Nested wiki checkout metadata; wiki content is tracked by the parent repository
+dcim-wiki/.git/
+
 # Accidental nested copies and recursive local import symlink
 implementation/dcim_ai_v2_rag/api/implementation/
 implementation/dcim_ai_v2_rag/implementation/

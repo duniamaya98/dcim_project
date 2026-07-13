@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCIM SIEM/SOC — Kafka vs No-Kafka Comparison</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .arch-panel {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    .arch-panel h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .arch-panel .tag {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-bottom: 1rem;
+    }
+
+    .tag-kafka { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.4); }
+    .tag-nokafka { background: rgba(136, 19, 55, 0.2); color: #fb7185; border: 1px solid rgba(136, 19, 55, 0.4); }
+
+    svg { width: 100%; display: block; }
+
+    /* Comparison Table */
+    .table-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+      margin-bottom: 2rem;
+    }
+
+    .table-container h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid #334155;
+      color: white;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 0.625rem 0.75rem;
+      border-bottom: 1px solid #1e293b;
+      color: #94a3b8;
+      vertical-align: top;
+    }
+
+    tr:hover td { background: rgba(30, 41, 59, 0.3); }
+
+    .winner { color: #34d399; font-weight: 600; }
+    .loser { color: #fb7185; }
+    .neutral { color: #fbbf24; }
+
+    .check { color: #34d399; }
+    .cross { color: #fb7185; }
+    .warn { color: #fbbf24; }
+
+    /* Verdict Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>DCIM SIEM/SOC — Kafka vs No-Kafka Comparison</h1>
+      </div>
+      <p class="subtitle">Side-by-side architecture comparison · Trade-off analysis untuk keputusan design</p>
+    </div>
+
+    <!-- Side-by-Side Diagrams -->
+    <div class="comparison-grid">
+
+      <!-- WITH KAFKA -->
+      <div class="arch-panel">
+        <h2>Versi A — Dengan Kafka</h2>
+        <span class="tag tag-kafka">Recommended for DCIM Scale</span>
+        <svg viewBox="0 0 480 520">
+          <defs>
+            <marker id="a1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+            </marker>
+            <marker id="a2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#fb923c"/>
+            </marker>
+            <marker id="a3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#a78bfa"/>
+            </marker>
+            <marker id="a4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#fb7185"/>
+            </marker>
+            <marker id="a5" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#34d399"/>
+            </marker>
+            <pattern id="g1" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#g1)"/>
+
+          <!-- Wazuh Agents -->
+          <rect x="20" y="30" width="90" height="40" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="65" y="48" fill="white" font-size="9" font-weight="600" text-anchor="middle">Wazuh Agent</text>
+          <text x="65" y="60" fill="#94a3b8" font-size="7" text-anchor="middle">Fleet ×N</text>
+
+          <!-- Syslog -->
+          <rect x="140" y="30" width="70" height="40" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="175" y="48" fill="white" font-size="9" font-weight="600" text-anchor="middle">Syslog</text>
+          <text x="175" y="60" fill="#94a3b8" font-size="7" text-anchor="middle">:514</text>
+
+          <!-- Arrow: Wazuh → Syslog -->
+          <line x1="110" y1="50" x2="138" y2="50" stroke="#fb7185" stroke-width="1.5" marker-end="url(#a4)"/>
+
+          <!-- NiFi -->
+          <rect x="240" y="20" width="100" height="60" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+          <text x="290" y="40" fill="white" font-size="10" font-weight="600" text-anchor="middle">Apache NiFi</text>
+          <text x="290" y="54" fill="#94a3b8" font-size="7" text-anchor="middle">Parse · Validate</text>
+          <text x="290" y="66" fill="#94a3b8" font-size="7" text-anchor="middle">Normalize · Enrich</text>
+
+          <!-- Arrow: Syslog → NiFi -->
+          <line x1="210" y1="50" x2="238" y2="50" stroke="#fb923c" stroke-width="1.5" marker-end="url(#a2)"/>
+
+          <!-- KAFKA (hero) -->
+          <rect x="240" y="110" width="100" height="70" rx="8" fill="rgba(251, 146, 60, 0.4)" stroke="#fb923c" stroke-width="2.5"/>
+          <text x="290" y="132" fill="white" font-size="12" font-weight="700" text-anchor="middle">Kafka</text>
+          <text x="290" y="148" fill="#fbbf24" font-size="8" text-anchor="middle">dcim.siem.events</text>
+          <text x="290" y="162" fill="#94a3b8" font-size="7" text-anchor="middle">12 partitions · RF=3</text>
+          <text x="290" y="174" fill="#94a3b8" font-size="7" text-anchor="middle">Retention: 30d</text>
+
+          <!-- Arrow: NiFi → Kafka -->
+          <line x1="290" y1="80" x2="290" y2="108" stroke="#fb923c" stroke-width="2" marker-end="url(#a2)"/>
+
+          <!-- Fan-out from Kafka -->
+          <!-- → ES -->
+          <rect x="380" y="110" width="80" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="420" y="130" fill="white" font-size="9" font-weight="600" text-anchor="middle">Elasticsearch</text>
+          <text x="420" y="144" fill="#94a3b8" font-size="7" text-anchor="middle">ILM · 90d</text>
+          <text x="420" y="154" fill="#a78bfa" font-size="7" text-anchor="middle">3 Nodes</text>
+
+          <line x1="340" y1="135" x2="378" y2="135" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#a3)"/>
+
+          <!-- → Workflow -->
+          <rect x="380" y="180" width="80" height="40" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="420" y="198" fill="white" font-size="9" font-weight="600" text-anchor="middle">Workflow</text>
+          <text x="420" y="210" fill="#94a3b8" font-size="7" text-anchor="middle">n8n / Temporal</text>
+
+          <line x1="340" y1="155" x2="378" y2="200" stroke="#34d399" stroke-width="1.5" marker-end="url(#a5)"/>
+
+          <!-- → Analytics -->
+          <rect x="380" y="235" width="80" height="40" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="420" y="253" fill="white" font-size="9" font-weight="600" text-anchor="middle">Analytics</text>
+          <text x="420" y="265" fill="#94a3b8" font-size="7" text-anchor="middle">Anomaly · AI</text>
+
+          <line x1="340" y1="170" x2="378" y2="255" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#a1)"/>
+
+          <!-- Correlation -->
+          <rect x="380" y="290" width="80" height="40" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="420" y="308" fill="white" font-size="9" font-weight="600" text-anchor="middle">Correlation</text>
+          <text x="420" y="320" fill="#94a3b8" font-size="7" text-anchor="middle">Rules · Patterns</text>
+
+          <line x1="420" y1="160" x2="420" y2="288" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a4)"/>
+
+          <!-- Benefits callout -->
+          <rect x="20" y="110" width="190" height="80" rx="6" fill="rgba(52, 211, 153, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="30" y="128" fill="#34d399" font-size="8" font-weight="600">✓ Kafka Benefits:</text>
+          <text x="30" y="142" fill="#94a3b8" font-size="7">• 30-day replay window</text>
+          <text x="30" y="154" fill="#94a3b8" font-size="7">• 3× replication durability</text>
+          <text x="30" y="166" fill="#94a3b8" font-size="7">• Multi-consumer fan-out</text>
+          <text x="30" y="178" fill="#94a3b8" font-size="7">• Backpressure absorption</text>
+
+          <!-- DLQ -->
+          <rect x="20" y="210" width="190" height="40" rx="6" fill="rgba(251, 191, 36, 0.1)" stroke="#fbbf24" stroke-width="1"/>
+          <text x="30" y="228" fill="#fbbf24" font-size="8" font-weight="600">DLQ: dcim.siem.dlq</text>
+          <text x="30" y="242" fill="#94a3b8" font-size="7">Failed events → manual reprocess</text>
+
+          <!-- Incident Response -->
+          <rect x="20" y="280" width="190" height="60" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="115" y="298" fill="white" font-size="9" font-weight="600" text-anchor="middle">Incident Response</text>
+          <text x="115" y="312" fill="#94a3b8" font-size="7" text-anchor="middle">Auto-create · Classify</text>
+          <text x="115" y="324" fill="#94a3b8" font-size="7" text-anchor="middle">Escalate · SLA tracking</text>
+
+          <line x1="115" y1="250" x2="115" y2="278" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a5)"/>
+
+          <!-- PostgreSQL -->
+          <rect x="20" y="360" width="190" height="40" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="115" y="378" fill="white" font-size="9" font-weight="600" text-anchor="middle">PostgreSQL</text>
+          <text x="115" y="392" fill="#94a3b8" font-size="7" text-anchor="middle">Incidents · Audit · State</text>
+
+          <line x1="115" y1="340" x2="115" y2="358" stroke="#a78bfa" stroke-width="1" marker-end="url(#a3)"/>
+
+          <!-- SOC Dashboard -->
+          <rect x="20" y="420" width="190" height="40" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="115" y="438" fill="white" font-size="9" font-weight="600" text-anchor="middle">SOC Dashboard · SOC API</text>
+          <text x="115" y="452" fill="#94a3b8" font-size="7" text-anchor="middle">Vue 3 · REST :8443</text>
+        </svg>
+      </div>
+
+      <!-- WITHOUT KAFKA -->
+      <div class="arch-panel">
+        <h2>Versi B — Tanpa Kafka</h2>
+        <span class="tag tag-nokafka">Simplified · Budget-friendly</span>
+        <svg viewBox="0 0 480 520">
+          <defs>
+            <marker id="b1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+            </marker>
+            <marker id="b2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#fb923c"/>
+            </marker>
+            <marker id="b3" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#a78bfa"/>
+            </marker>
+            <marker id="b4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#fb7185"/>
+            </marker>
+            <pattern id="g2" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#g2)"/>
+
+          <!-- Wazuh Agents -->
+          <rect x="20" y="30" width="90" height="40" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="65" y="48" fill="white" font-size="9" font-weight="600" text-anchor="middle">Wazuh Agent</text>
+          <text x="65" y="60" fill="#94a3b8" font-size="7" text-anchor="middle">Fleet ×N</text>
+
+          <!-- Syslog -->
+          <rect x="140" y="30" width="70" height="40" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+          <text x="175" y="48" fill="white" font-size="9" font-weight="600" text-anchor="middle">Syslog</text>
+          <text x="175" y="60" fill="#94a3b8" font-size="7" text-anchor="middle">:514</text>
+
+          <line x1="110" y1="50" x2="138" y2="50" stroke="#fb7185" stroke-width="1.5" marker-end="url(#b4)"/>
+
+          <!-- NiFi (hero — replaces Kafka) -->
+          <rect x="240" y="15" width="110" height="75" rx="8" fill="rgba(251, 146, 60, 0.4)" stroke="#fb923c" stroke-width="2.5"/>
+          <text x="295" y="37" fill="white" font-size="12" font-weight="700" text-anchor="middle">Apache NiFi</text>
+          <text x="295" y="52" fill="#fbbf24" font-size="8" text-anchor="middle">★ Buffer + Process</text>
+          <text x="295" y="64" fill="#94a3b8" font-size="7" text-anchor="middle">FlowFile Repo</text>
+          <text x="295" y="76" fill="#94a3b8" font-size="7" text-anchor="middle">Provenance (limited)</text>
+
+          <line x1="210" y1="50" x2="238" y2="50" stroke="#fb923c" stroke-width="2" marker-end="url(#b2)"/>
+
+          <!-- Elasticsearch (direct from NiFi) -->
+          <rect x="380" y="15" width="80" height="55" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="2"/>
+          <text x="420" y="35" fill="white" font-size="9" font-weight="600" text-anchor="middle">Elasticsearch</text>
+          <text x="420" y="48" fill="#94a3b8" font-size="7" text-anchor="middle">ILM · 90d</text>
+          <text x="420" y="60" fill="#a78bfa" font-size="7" text-anchor="middle">3 Nodes</text>
+
+          <line x1="350" y1="52" x2="378" y2="42" stroke="#a78bfa" stroke-width="2" marker-end="url(#b3)"/>
+          <text x="365" y="38" fill="#a78bfa" font-size="7">REST Bulk</text>
+
+          <!-- Limitation callout -->
+          <rect x="20" y="110" width="190" height="95" rx="6" fill="rgba(251, 113, 133, 0.08)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="30" y="128" fill="#fb7185" font-size="8" font-weight="600">✗ Limitations:</text>
+          <text x="30" y="142" fill="#94a3b8" font-size="7">• Replay: hours (provenance)</text>
+          <text x="30" y="154" fill="#94a3b8" font-size="7">• Durability: local disk only</text>
+          <text x="30" y="166" fill="#94a3b8" font-size="7">• Fan-out: stateful OutputPort</text>
+          <text x="30" y="178" fill="#94a3b8" font-size="7">• Backpressure: bounded queue</text>
+          <text x="30" y="192" fill="#94a3b8" font-size="7">• No multi-consumer parallelism</text>
+
+          <!-- NiFi outputs (fan-out) -->
+          <rect x="240" y="120" width="110" height="45" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="295" y="138" fill="white" font-size="9" font-weight="600" text-anchor="middle">Correlation Engine</text>
+          <text x="295" y="152" fill="#94a3b8" font-size="7" text-anchor="middle">Rule · Threshold · Pattern</text>
+
+          <line x1="295" y1="90" x2="295" y2="118" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#b4)"/>
+
+          <!-- Alert Engine -->
+          <rect x="240" y="185" width="110" height="40" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+          <text x="295" y="203" fill="white" font-size="9" font-weight="600" text-anchor="middle">Alert Engine</text>
+          <text x="295" y="215" fill="#94a3b8" font-size="7" text-anchor="middle">Real-time</text>
+
+          <line x1="295" y1="165" x2="295" y2="183" stroke="#fb7185" stroke-width="1" marker-end="url(#b4)"/>
+
+          <!-- Compliance -->
+          <rect x="240" y="245" width="110" height="40" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+          <text x="295" y="263" fill="white" font-size="9" font-weight="600" text-anchor="middle">Compliance</text>
+          <text x="295" y="275" fill="#94a3b8" font-size="7" text-anchor="middle">CIS Benchmark</text>
+
+          <line x1="295" y1="225" x2="295" y2="243" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#b1)"/>
+
+          <!-- Incident Response -->
+          <rect x="20" y="240" width="190" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+          <text x="115" y="258" fill="white" font-size="9" font-weight="600" text-anchor="middle">Incident Response</text>
+          <text x="115" y="272" fill="#94a3b8" font-size="7" text-anchor="middle">Auto-create · Classify</text>
+          <text x="115" y="284" fill="#94a3b8" font-size="7" text-anchor="middle">Escalate · SLA tracking</text>
+
+          <line x1="115" y1="205" x2="115" y2="238" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#a5)"/>
+
+          <!-- PostgreSQL -->
+          <rect x="20" y="315" width="190" height="40" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+          <text x="115" y="333" fill="white" font-size="9" font-weight="600" text-anchor="middle">PostgreSQL</text>
+          <text x="115" y="347" fill="#94a3b8" font-size="7" text-anchor="middle">Incidents · Audit · State</text>
+
+          <line x1="115" y1="295" x2="115" y2="313" stroke="#a78bfa" stroke-width="1" marker-end="url(#b3)"/>
+
+          <!-- SOC Dashboard -->
+          <rect x="20" y="375" width="190" height="40" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+          <text x="115" y="393" fill="white" font-size="9" font-weight="600" text-anchor="middle">SOC Dashboard · SOC API</text>
+          <text x="115" y="407" fill="#94a3b8" font-size="7" text-anchor="middle">Vue 3 · REST :8443</text>
+
+          <!-- Missing DLQ indicator -->
+          <rect x="240" y="310" width="110" height="35" rx="6" fill="rgba(251, 113, 133, 0.15)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3"/>
+          <text x="295" y="328" fill="#fb7185" font-size="8" font-weight="600" text-anchor="middle">⚠ No Dedicated DLQ</text>
+          <text x="295" y="340" fill="#94a3b8" font-size="7" text-anchor="middle">NiFi error repo only</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Detailed Comparison Table -->
+    <div class="table-container">
+      <h2>📊 Detailed Comparison Matrix</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:22%">Dimension</th>
+            <th style="width:39%">Versi A — Dengan Kafka</th>
+            <th style="width:39%">Versi B — Tanpa Kafka</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Pipeline</strong></td>
+            <td>Wazuh → Syslog → NiFi → <span class="winner">Kafka</span> → ES</td>
+            <td>Wazuh → Syslog → <span class="neutral">NiFi (direct)</span> → ES</td>
+          </tr>
+          <tr>
+            <td><strong>Buffer / Backpressure</strong></td>
+            <td class="winner">Kafka menyerap burst, ES consume sesuai rate</td>
+            <td class="loser">NiFi FlowFile Repo terbatas, ES bisa overwhelmed</td>
+          </tr>
+          <tr>
+            <td><strong>Replay Window</strong></td>
+            <td class="winner">30 hari retention di Kafka topic</td>
+            <td class="loser">Hours saja (NiFi provenance repository)</td>
+          </tr>
+          <tr>
+            <td><strong>Durability</strong></td>
+            <td class="winner">3× replication, disk-based, survive broker failure</td>
+            <td class="loser">Local disk NiFi, single point of failure</td>
+          </tr>
+          <tr>
+            <td><strong>Fan-out / Multi-consumer</strong></td>
+            <td class="winner">Parallel: ES + Workflow + Analytics + Correlation</td>
+            <td class="loser">Stateful OutputPort, serial, NiFi jadi bottleneck</td>
+          </tr>
+          <tr>
+            <td><strong>DLQ (Dead Letter Queue)</strong></td>
+            <td class="winner">Dedicated topic <code>dcim.siem.dlq</code></td>
+            <td class="loser">NiFi error repository, manual inspection</td>
+          </tr>
+          <tr>
+            <td><strong>Data Lineage</strong></td>
+            <td class="winner">Kafka offset + NiFi provenance = complete chain</td>
+            <td class="neutral">NiFi provenance saja (adequate tapi limited)</td>
+          </tr>
+          <tr>
+            <td><strong>Latency</strong></td>
+            <td class="neutral">+50-200ms (Kafka hop)</td>
+            <td class="winner">Direct write, lebih rendah ~50-200ms</td>
+          </tr>
+          <tr>
+            <td><strong>Resource Footprint</strong></td>
+            <td class="loser">3 Kafka brokers + 3 ZK/KRaft nodes</td>
+            <td class="winner">0 Kafka nodes — hemat 3 VM</td>
+          </tr>
+          <tr>
+            <td><strong>Operational Complexity</strong></td>
+            <td class="loser">Kafka cluster mgmt, partition rebalancing, monitoring</td>
+            <td class="winner">NiFi saja, single management plane</td>
+          </tr>
+          <tr>
+            <td><strong>ES Write Pattern</strong></td>
+            <td class="winner">Kafka Connect / NiFi → controlled bulk insert</td>
+            <td class="neutral">NiFi → bulk insert (manual tuning)</td>
+          </tr>
+          <tr>
+            <td><strong>Failure Isolation</strong></td>
+            <td class="winner">ES down = events safe di Kafka, replay nanti</td>
+            <td class="loser">ES down = NiFi queue penuh, agent blocked</td>
+          </tr>
+          <tr>
+            <td><strong>Scaling Path</strong></td>
+            <td class="winner">Add Kafka brokers + ES nodes independently</td>
+            <td class="loser">Scale NiFi = monolithic, harder to split</td>
+          </tr>
+          <tr>
+            <td><strong>Cost (Infra)</strong></td>
+            <td class="loser">+3 VM × 4vCPU/16GB ≈ $450-600/bulan</td>
+            <td class="winner">$0 tambahan</td>
+          </tr>
+          <tr>
+            <td><strong>SLA: Alert &lt; 30s</strong></td>
+            <td class="winner">✓ Tercapai (Kafka + ES + Correlation)</td>
+            <td class="warn">⚠ Marginal saat spike (backpressure risk)</td>
+          </tr>
+          <tr>
+            <td><strong>Investigation Search &lt; 2s</strong></td>
+            <td class="winner">✓ ES optimised, Kafka offloaded</td>
+            <td class="warn">⚠ ES bisa slow saat write burst</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Verdict Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Verdict: Pilih Kafka Jika</h3>
+        </div>
+        <ul>
+          <li>• Volume &gt; 5000 events/detik</li>
+          <li>• Butuh replay &gt; 24 jam (forensic investigation)</li>
+          <li>• Multi-consumer (ES + Workflow + Analytics + Compliance)</li>
+          <li>• Compliance audit butuh complete event trail</li>
+          <li>• DCIM production — data loss = blind spot keamanan</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Verdict: Skip Kafka Jika</h3>
+        </div>
+        <ul>
+          <li>• Volume rendah (&lt; 2000 events/detik)</li>
+          <li>• Single consumer (ES saja)</li>
+          <li>• Dev/staging environment</li>
+          <li>• Budget sangat terbatas</li>
+          <li>• Tim kecil, tidak ada dedicated Kafka ops</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Rekomendasi Hermes</h3>
+        </div>
+        <ul>
+          <li>• <strong>DCIM Production → Kafka</strong> (data integrity &gt; cost)</li>
+          <li>• <strong>Dev/Staging → No-Kafka</strong> (faster bootstrap)</li>
+          <li>• <strong>Middle ground:</strong> Start no-Kafka, migrate when volume justifies</li>
+          <li>• <strong>Hybrid:</strong> Kafka untuk SIEM, NiFi untuk DI&I non-security</li>
+          <li>• Risk: No-Kafka di production = single failure point di NiFi</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+      DCIM Core Platform · Block 6 SIEM/SOC · Kafka vs No-Kafka Comparison · Generated 2026-06-24
+    </p>
+  </div>
+</body>
+</html>

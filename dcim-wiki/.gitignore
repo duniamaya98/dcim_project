@@ -1,0 +1,21 @@
+# DCIM Wiki - Git Ignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Temp / backup
+*.tmp
+*.bak
+*.log
+
+# Python
+__pycache__/
+*.pyc
