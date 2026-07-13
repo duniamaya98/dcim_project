@@ -1,0 +1,277 @@
+"""
+Auto-detect model yang sedang running di llama.cpp server dan Ollama.
+
+Query API endpoints untuk detect model aktif, auto-update config.
+"""
+
+import requests
+import json
+from typing import Dict, List, Optional, Tuple
+
+# Default endpoints
+LLAMA_SERVER_ENDPOINTS = [
+    {"url": "http://localhost:8080/v1", "name": "llama-server-8080"},
+    {"url": "http://localhost:8081/v1", "name": "llama-server-8081"},
+    {"url": "http://localhost:8082/v1", "name": "llama-server-8082"},
+    {"url": "http://localhost:8083/v1", "name": "llama-server-8083"},
+]
+
+OLLAMA_ENDPOINTS = [
+    {"url": "http://localhost:11434", "name": "ollama-11434"},
+    {"url": "http://localhost:11435", "name": "ollama-11435"},
+]
+
+
+def detect_llama_server_models() -> List[Dict]:
+    """Detect model yang running di llama.cpp server"""
+    detected = []
+
+    for endpoint in LLAMA_SERVER_ENDPOINTS:
+        try:
+            # Try to get model info from /v1/models
+            response = requests.get(f"{endpoint['url']}/models", timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                for model in data.get("data", []):
+                    model_id = model.get("id", "unknown")
+                    detected.append({
+                        "model_name": model_id,
+                        "base_url": endpoint["url"],
+                        "api_key": "not-needed",
+                        "platform": "llama.cpp",
+                        "server": endpoint["name"],
+                        "status": "running",
+                    })
+
+            # Fallback: try chat completions endpoint
+            if not detected or not any(d["server"] == endpoint["name"] for d in detected):
+                response = requests.get(f"{endpoint['url']}/chat/completions", timeout=3)
+                # If we get a response (even error), server is running
+                if response.status_code in [200, 400, 401, 403]:
+                    detected.append({
+                        "model_name": f"unknown-{endpoint['name']}",
+                        "base_url": endpoint["url"],
+                        "api_key": "not-needed",
+                        "platform": "llama.cpp",
+                        "server": endpoint["name"],
+                        "status": "running (model unknown)",
+                    })
+
+        except requests.exceptions.ConnectionError:
+            pass  # Server not running
+        except Exception as e:
+            pass
+
+    return detected
+
+
+def detect_ollama_models() -> List[Dict]:
+    """Detect model yang running di Ollama"""
+    detected = []
+
+    for endpoint in OLLAMA_ENDPOINTS:
+        try:
+            # Get running models from /api/ps
+            response = requests.get(f"{endpoint['url']}/api/ps", timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                for model in data:
+                    model_name = model.get("name", "unknown")
+                    detected.append({
+                        "model_name": model_name,
+                        "base_url": f"{endpoint['url']}/v1",
+                        "api_key": "ollama",
+                        "platform": "ollama",
+                        "server": endpoint["name"],
+                        "status": "running",
+                    })
+
+            # Also get available models from /api/tags
+            response = requests.get(f"{endpoint['url']}/api/tags", timeout=3)
+            if response.status_code == 200:
+                data = response.json()
+                for model in data.get("models", []):
+                    model_name = model.get("name", "unknown")
+                    # Only add if not already detected as running
+                    if not any(d["model_name"] == model_name for d in detected):
+                        detected.append({
+                            "model_name": model_name,
+                            "base_url": f"{endpoint['url']}/v1",
+                            "api_key": "ollama",
+                            "platform": "ollama",
+                            "server": endpoint["name"],
+                            "status": "available (not running)",
+                        })
+
+        except requests.exceptions.ConnectionError:
+            pass  # Server not running
+        except Exception as e:
+            pass
+
+    return detected
+
+
+def detect_all_models() -> Dict[str, List[Dict]]:
+    """Detect semua model yang running/available"""
+    return {
+        "llama.cpp": detect_llama_server_models(),
+        "ollama": detect_ollama_models(),
+    }
+
+
+def auto_update_config(detected_models: Dict[str, List[Dict]], config_path: str = "config.py") -> str:
+    """Generate config.py baru berdasarkan model yang terdeteksi"""
+    config_lines = []
+    config_lines.append('"""')
+    config_lines.append('Model Specification Test Configuration')
+    config_lines.append('')
+    config_lines.append('AUTO-GENERATED by detect_models.py')
+    config_lines.append('Edit sesuai dengan model dan endpoint yang sedang running.')
+    config_lines.append('"""')
+    config_lines.append('')
+    config_lines.append('# Model configurations')
+    config_lines.append('MODELS = {')
+
+    # Add detected models
+    all_models = []
+    for platform, models in detected_models.items():
+        all_models.extend(models)
+
+    for model_info in all_models:
+        model_name = model_info["model_name"]
+        config_lines.append(f'    "{model_name}": {{')
+        config_lines.append(f'        "base_url": "{model_info["base_url"]}",')
+        config_lines.append(f'        "api_key": "{model_info["api_key"]}",')
+        config_lines.append(f'        "platform": "{model_info["platform"]}",')
+        enabled = "True" if model_info["status"] == "running" else "False"
+        config_lines.append(f'        "enabled": {enabled},')
+        config_lines.append(f'    }},')
+
+    # Add existing models that are not detected
+    try:
+        with open(config_path, 'r') as f:
+            existing_content = f.read()
+            # Parse existing models (simple approach)
+            import re
+            existing_models = re.findall(r'"([^"]+)":\s*\{[^}]*"base_url":\s*"([^"]+)"', existing_content)
+            for model_name, base_url in existing_models:
+                if not any(m["model_name"] == model_name for m in all_models):
+                    config_lines.append(f'    # Existing (not detected)')
+                    config_lines.append(f'    "{model_name}": {{')
+                    config_lines.append(f'        "base_url": "{base_url}",')
+                    config_lines.append(f'        "api_key": "not-needed",')
+                    config_lines.append(f'        "platform": "unknown",')
+                    config_lines.append(f'        "enabled": False,')
+                    config_lines.append(f'    }},')
+    except FileNotFoundError:
+        pass
+
+    config_lines.append('}')
+    config_lines.append('')
+
+    # Set default model to first running model
+    running_models = [m for m in all_models if m["status"] == "running"]
+    if running_models:
+        default_model = running_models[0]["model_name"]
+    else:
+        default_model = all_models[0]["model_name"] if all_models else "Qwen/Qwen3-VL-4B-Instruct-GGUF:Q4_K_M"
+
+    config_lines.append(f'# Default model untuk testing (auto-detected)')
+    config_lines.append(f'DEFAULT_MODEL = "{default_model}"')
+    config_lines.append('')
+    config_lines.append('# Test configuration')
+    config_lines.append('TEST_CONFIG = {')
+    config_lines.append('    "timeout": 60,  # seconds per test')
+    config_lines.append('    "max_retries": 2,')
+    config_lines.append('    "temperature": 0.3,  # Lower for deterministic results')
+    config_lines.append('    "max_tokens": 1024,')
+    config_lines.append('}')
+    config_lines.append('')
+    config_lines.append('# Scoring thresholds')
+    config_lines.append('SCORING = {')
+    config_lines.append('    "perfect": 1.0,')
+    config_lines.append('    "good": 0.75,')
+    config_lines.append('    "acceptable": 0.5,')
+    config_lines.append('    "poor": 0.25,')
+    config_lines.append('    "failed": 0.0,')
+    config_lines.append('}')
+    config_lines.append('')
+    config_lines.append('# Output paths')
+    config_lines.append('OUTPUT_DIR = "results"')
+    config_lines.append('RAW_DIR = "results/raw"')
+    config_lines.append('REPORT_DIR = "results/reports"')
+
+    return '\n'.join(config_lines)
+
+
+def print_detection_summary(detected_models: Dict[str, List[Dict]]):
+    """Print summary model yang terdeteksi"""
+    print("\n" + "="*60)
+    print("AUTO-DETECT: Model yang sedang running/available")
+    print("="*60)
+
+    total_running = 0
+    total_available = 0
+
+    for platform, models in detected_models.items():
+        print(f"\n{platform.upper()}:")
+        print("-" * 40)
+
+        if not models:
+            print("  No models detected (server not running?)")
+            continue
+
+        for model in models:
+            status_icon = "🟢" if model["status"] == "running" else "⚪"
+            print(f"  {status_icon} {model['model_name']}")
+            print(f"     Server: {model['server']}")
+            print(f"     URL: {model['base_url']}")
+            print(f"     Status: {model['status']}")
+            print()
+
+            if model["status"] == "running":
+                total_running += 1
+            else:
+                total_available += 1
+
+    print("-" * 40)
+    print(f"Total running: {total_running}")
+    print(f"Total available: {total_available}")
+    print("="*60 + "\n")
+
+
+def main():
+    """Main execution"""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Auto-detect running models")
+    parser.add_argument("--update-config", action="store_true",
+                       help="Auto-update config.py dengan model yang terdeteksi")
+    parser.add_argument("--json", action="store_true",
+                       help="Output dalam format JSON")
+    args = parser.parse_args()
+
+    # Detect models
+    detected = detect_all_models()
+
+    if args.json:
+        print(json.dumps(detected, indent=2))
+        return
+
+    # Print summary
+    print_detection_summary(detected)
+
+    # Auto-update config if requested
+    if args.update_config:
+        config_content = auto_update_config(detected)
+        with open("config.py", 'w') as f:
+            f.write(config_content)
+        print("✅ config.py updated!")
+        print("   Review dan edit jika perlu.")
+    else:
+        print("💡 Tip: Gunakan --update-config untuk auto-update config.py")
+        print("   Atau jalankan: python detect_models.py --update-config\n")
+
+
+if __name__ == "__main__":
+    main()

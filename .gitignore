@@ -51,6 +51,23 @@ venv.bak/
 .env.local
 .env.*.local
 
+# Local deployment secrets (commit only *.example files)
+implementation/dcim_ai_v2_rag/k8s/secret.yaml
+
+# Local agent/tool state and generated caches
+.codex/
+.commandcode/
+.rtk/
+unsloth_compiled_cache/
+
+# Nested wiki checkout metadata; wiki content is tracked by the parent repository
+dcim-wiki/.git/
+
+# Accidental nested copies and recursive local import symlink
+implementation/dcim_ai_v2_rag/api/implementation/
+implementation/dcim_ai_v2_rag/implementation/
+implementation/dcim_ai_v2_rag/dcim_ai
+
 # Database
 *.db
 *.sqlite

@@ -43,8 +43,8 @@ def create_test_images(output_dir: str):
     img2.save(os.path.join(output_dir, "alert_notification.png"))
 
     return {
-        "dashboard": os.path.join(output_dir, "dashboard_mockup.png"),
-        "alert": os.path.join(output_dir, "alert_notification.png"),
+        "dashboard_mockup.png": os.path.join(output_dir, "dashboard_mockup.png"),
+        "alert_notification.png": os.path.join(output_dir, "alert_notification.png"),
     }
 
 

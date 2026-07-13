@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCIM Block 3 — Asset Repository Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #a78bfa; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 1100px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>DCIM Block 3 — Asset Repository</h1>
+      </div>
+      <p class="subtitle">Reference Architecture • CRUD API • Bulk Import • Reconciliation • Audit Trail • Enrichment API • Redis Cache</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 900">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b" />
+          </marker>
+          <marker id="arrowhead-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+          </marker>
+          <marker id="arrowhead-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399" />
+          </marker>
+          <marker id="arrowhead-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185" />
+          </marker>
+          <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24" />
+          </marker>
+          <marker id="arrowhead-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee" />
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+
+        <!-- ================================================================
+             ZONE: API Layer (Top)
+             ================================================================ -->
+        <rect x="20" y="20" width="1160" height="140" rx="12" fill="rgba(8, 51, 68, 0.08)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="40" fill="#22d3ee" font-size="11" font-weight="600">API Layer (FastAPI)</text>
+
+        <!-- CRUD Endpoints -->
+        <rect x="40" y="55" width="140" height="85" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="110" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">CRUD API</text>
+        <text x="110" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">POST /api/v1/assets</text>
+        <text x="110" y="104" fill="#22d3ee" font-size="8" text-anchor="middle">GET /api/v1/assets</text>
+        <text x="110" y="116" fill="#22d3ee" font-size="8" text-anchor="middle">PUT /api/v1/assets/{id}</text>
+        <text x="110" y="128" fill="#22d3ee" font-size="8" text-anchor="middle">DELETE /api/v1/assets/{id}</text>
+
+        <!-- Bulk Import -->
+        <rect x="200" y="55" width="140" height="85" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="270" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Bulk Import</text>
+        <text x="270" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">POST /api/v1/assets/bulk</text>
+        <text x="270" y="104" fill="#22d3ee" font-size="8" text-anchor="middle">CSV / JSON upload</text>
+        <text x="270" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Upsert on serial+manufacturer</text>
+        <text x="270" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">Async processing</text>
+
+        <!-- Search -->
+        <rect x="360" y="55" width="120" height="85" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="420" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Search</text>
+        <text x="420" y="92" fill="#22d3ee" font-size="8" text-anchor="middle">GET /assets/search</text>
+        <text x="420" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">serial, tag, name</text>
+        <text x="420" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Full-text search</text>
+        <text x="420" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">Trigram index</text>
+
+        <!-- Enrichment API -->
+        <rect x="500" y="55" width="160" height="85" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="580" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Enrichment API</text>
+        <text x="580" y="92" fill="#fbbf24" font-size="8" text-anchor="middle">GET /assets/enrich/{ci_id}</text>
+        <text x="580" y="104" fill="#fbbf24" font-size="8" text-anchor="middle">GET /assets/enrich/batch</text>
+        <text x="580" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Redis cache 15min TTL</text>
+        <text x="580" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">p99 < 50ms</text>
+
+        <!-- Audit API -->
+        <rect x="680" y="55" width="140" height="85" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="750" y="77" fill="white" font-size="10" font-weight="600" text-anchor="middle">Audit Trail</text>
+        <text x="750" y="92" fill="#fb7185" font-size="8" text-anchor="middle">GET /assets/{id}/audit-trail</text>
+        <text x="750" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Immutable log</text>
+        <text x="750" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Partitioned by month</text>
+        <text x="750" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">7-year retention</text>
+
+        <!-- RBAC -->
+        <rect x="840" y="55" width="120" height="85" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="900" y="77" fill="#fb7185" font-size="9" font-weight="600" text-anchor="middle">RBAC</text>
+        <text x="900" y="92" fill="#94a3b8" font-size="7" text-anchor="middle">viewer: read</text>
+        <text x="900" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">operator: read+write</text>
+        <text x="900" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">manager: read+write</text>
+        <text x="900" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">admin: full access</text>
+
+        <!-- Rate Limit -->
+        <rect x="980" y="55" width="100" height="85" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="1030" y="77" fill="white" font-size="9" font-weight="600" text-anchor="middle">Rate Limit</text>
+        <text x="1030" y="92" fill="#94a3b8" font-size="7" text-anchor="middle">CRUD: 100/min</text>
+        <text x="1030" y="104" fill="#94a3b8" font-size="7" text-anchor="middle">Read: 1000/min</text>
+        <text x="1030" y="116" fill="#94a3b8" font-size="7" text-anchor="middle">Bulk: 10/min</text>
+        <text x="1030" y="128" fill="#94a3b8" font-size="7" text-anchor="middle">Enrich: 500/min</text>
+
+        <!-- ================================================================
+             ZONE: Service Layer (Middle)
+             ================================================================ -->
+        <rect x="20" y="180" width="1160" height="160" rx="12" fill="rgba(6, 78, 59, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="200" fill="#34d399" font-size="11" font-weight="600">Service Layer</text>
+
+        <!-- Validation Service -->
+        <rect x="40" y="215" width="150" height="100" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="115" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Validation</text>
+        <text x="115" y="252" fill="#34d399" font-size="8" text-anchor="middle">Mandatory fields</text>
+        <text x="115" y="264" fill="#34d399" font-size="8" text-anchor="middle">Uniqueness checks</text>
+        <text x="115" y="276" fill="#34d399" font-size="8" text-anchor="middle">Referential integrity</text>
+        <text x="115" y="288" fill="#34d399" font-size="8" text-anchor="middle">Range validation</text>
+        <text x="115" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">JSON Schema + Pydantic</text>
+
+        <!-- Reconciliation Engine -->
+        <rect x="210" y="215" width="180" height="100" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="300" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Reconciliation Engine</text>
+        <text x="300" y="252" fill="#34d399" font-size="8" text-anchor="middle">CMDB ↔ Asset matching</text>
+        <text x="300" y="264" fill="#34d399" font-size="8" text-anchor="middle">Discovery data sync</text>
+        <text x="300" y="276" fill="#34d399" font-size="8" text-anchor="middle">Conflict resolution</text>
+        <text x="300" y="288" fill="#34d399" font-size="8" text-anchor="middle">Newer timestamp wins</text>
+        <text x="300" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">Match: serial + manufacturer</text>
+
+        <!-- Audit Trail Service -->
+        <rect x="410" y="215" width="150" height="100" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="485" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Audit Trail</text>
+        <text x="485" y="252" fill="#fb7185" font-size="8" text-anchor="middle">Immutable append-only</text>
+        <text x="485" y="264" fill="#fb7185" font-size="8" text-anchor="middle">old_value → new_value</text>
+        <text x="485" y="276" fill="#fb7185" font-size="8" text-anchor="middle">User + timestamp + IP</text>
+        <text x="485" y="288" fill="#94a3b8" font-size="7" text-anchor="middle">Partitioned monthly</text>
+        <text x="485" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">7-year retention</text>
+
+        <!-- Cache Service -->
+        <rect x="580" y="215" width="150" height="100" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="655" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Cache Service</text>
+        <text x="655" y="252" fill="#fbbf24" font-size="8" text-anchor="middle">Redis 7 (sentinel)</text>
+        <text x="655" y="264" fill="#fbbf24" font-size="8" text-anchor="middle">Enrich: 15min TTL</text>
+        <text x="655" y="276" fill="#fbbf24" font-size="8" text-anchor="middle">Detail: 5min TTL</text>
+        <text x="655" y="288" fill="#fbbf24" font-size="8" text-anchor="middle">Search: 5min TTL</text>
+        <text x="655" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">Cache invalidation on write</text>
+
+        <!-- Lifecycle Manager -->
+        <rect x="750" y="215" width="160" height="100" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="830" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Lifecycle Manager</text>
+        <text x="830" y="252" fill="#34d399" font-size="8" text-anchor="middle">State transitions:</text>
+        <text x="830" y="264" fill="#34d399" font-size="7" text-anchor="middle">on_order → received → deployed</text>
+        <text x="830" y="276" fill="#34d399" font-size="7" text-anchor="middle">→ in_storage → maintenance</text>
+        <text x="830" y="288" fill="#34d399" font-size="7" text-anchor="middle">→ retired → disposed</text>
+        <text x="830" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">Transition validation</text>
+
+        <!-- Depreciation Calculator -->
+        <rect x="930" y="215" width="160" height="100" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1010" y="237" fill="white" font-size="10" font-weight="600" text-anchor="middle">Depreciation</text>
+        <text x="1010" y="252" fill="#34d399" font-size="8" text-anchor="middle">Straight-line method</text>
+        <text x="1010" y="264" fill="#34d399" font-size="8" text-anchor="middle">Declining balance</text>
+        <text x="1010" y="276" fill="#34d399" font-size="8" text-anchor="middle">Units of production</text>
+        <text x="1010" y="288" fill="#34d399" font-size="8" text-anchor="middle">Monthly batch run</text>
+        <text x="1010" y="300" fill="#94a3b8" font-size="7" text-anchor="middle">Salvage value support</text>
+
+        <!-- ================================================================
+             ZONE: Data Layer (Bottom)
+             ================================================================ -->
+        <rect x="20" y="360" width="1160" height="200" rx="12" fill="rgba(76, 29, 149, 0.08)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="32" y="380" fill="#a78bfa" font-size="11" font-weight="600">Data Layer — PostgreSQL 16</text>
+
+        <!-- asset table -->
+        <rect x="40" y="400" width="200" height="140" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="140" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">asset</text>
+        <text x="140" y="438" fill="#a78bfa" font-size="8" text-anchor="middle">PRIMARY TABLE</text>
+        <text x="50" y="456" fill="#94a3b8" font-size="7">• asset_id (PK, UUID)</text>
+        <text x="50" y="468" fill="#94a3b8" font-size="7">• asset_tag (UNIQUE)</text>
+        <text x="50" y="480" fill="#94a3b8" font-size="7">• serial_number + manufacturer</text>
+        <text x="50" y="492" fill="#94a3b8" font-size="7">• name, model, manufacturer</text>
+        <text x="50" y="504" fill="#94a3b8" font-size="7">• owner_dept, location_id (FK)</text>
+        <text x="50" y="516" fill="#94a3b8" font-size="7">• purchase_date, cost</text>
+        <text x="50" y="528" fill="#94a3b8" font-size="7">• warranty_start/end</text>
+
+        <!-- asset_location table -->
+        <rect x="260" y="400" width="170" height="140" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="345" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">asset_location</text>
+        <text x="345" y="438" fill="#a78bfa" font-size="8" text-anchor="middle">PHYSICAL LOCATION</text>
+        <text x="270" y="456" fill="#94a3b8" font-size="7">• location_id (PK, UUID)</text>
+        <text x="270" y="468" fill="#94a3b8" font-size="7">• site_name, building</text>
+        <text x="270" y="480" fill="#94a3b8" font-size="7">• floor, room</text>
+        <text x="270" y="492" fill="#94a3b8" font-size="7">• rack, position_u</text>
+        <text x="270" y="504" fill="#94a3b8" font-size="7">• latitude, longitude</text>
+        <text x="270" y="520" fill="#a78bfa" font-size="7">UNIQUE (room, rack, pos)</text>
+
+        <!-- asset_financial table -->
+        <rect x="450" y="400" width="180" height="140" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="540" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">asset_financial</text>
+        <text x="540" y="438" fill="#a78bfa" font-size="8" text-anchor="middle">FINANCIAL DATA</text>
+        <text x="460" y="456" fill="#94a3b8" font-size="7">• asset_id (PK, FK)</text>
+        <text x="460" y="468" fill="#94a3b8" font-size="7">• depreciation_method</text>
+        <text x="460" y="480" fill="#94a3b8" font-size="7">• useful_life_years</text>
+        <text x="460" y="492" fill="#94a3b8" font-size="7">• book_value</text>
+        <text x="460" y="504" fill="#94a3b8" font-size="7">• salvage_value</text>
+        <text x="460" y="516" fill="#94a3b8" font-size="7">• last_depreciation_date</text>
+
+        <!-- asset_contract table -->
+        <rect x="650" y="400" width="170" height="140" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="735" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">asset_contract</text>
+        <text x="735" y="438" fill="#a78bfa" font-size="8" text-anchor="middle">CONTRACTS</text>
+        <text x="660" y="456" fill="#94a3b8" font-size="7">• contract_id (PK, UUID)</text>
+        <text x="660" y="468" fill="#94a3b8" font-size="7">• vendor, contract_type</text>
+        <text x="660" y="480" fill="#94a3b8" font-size="7">• start_date, end_date</text>
+        <text x="660" y="492" fill="#94a3b8" font-size="7">• sla_terms</text>
+        <text x="660" y="504" fill="#94a3b8" font-size="7">• renewal_date</text>
+        <text x="660" y="516" fill="#94a3b8" font-size="7">• total_value</text>
+
+        <!-- asset_audit_log table -->
+        <rect x="840" y="400" width="170" height="140" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="925" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">asset_audit_log</text>
+        <text x="925" y="438" fill="#fb7185" font-size="8" text-anchor="middle">IMMUTABLE</text>
+        <text x="850" y="456" fill="#94a3b8" font-size="7">• audit_id (PK, UUID)</text>
+        <text x="850" y="468" fill="#94a3b8" font-size="7">• asset_id, action</text>
+        <text x="850" y="480" fill="#94a3b8" font-size="7">• field_name</text>
+        <text x="850" y="492" fill="#94a3b8" font-size="7">• old_value → new_value</text>
+        <text x="850" y="504" fill="#94a3b8" font-size="7">• changed_by, changed_at</text>
+        <text x="850" y="516" fill="#94a3b8" font-size="7">• source, ip_address</text>
+
+        <!-- Redis Cache -->
+        <rect x="1030" y="400" width="140" height="140" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="1100" y="422" fill="white" font-size="11" font-weight="600" text-anchor="middle">Redis 7</text>
+        <text x="1100" y="438" fill="#fbbf24" font-size="8" text-anchor="middle">CACHE LAYER</text>
+        <text x="1040" y="456" fill="#94a3b8" font-size="7">• enrich:{ci_id} 15m</text>
+        <text x="1040" y="468" fill="#94a3b8" font-size="7">• detail:{id} 5m</text>
+        <text x="1040" y="480" fill="#94a3b8" font-size="7">• search:{hash} 5m</text>
+        <text x="1040" y="496" fill="#fbbf24" font-size="8">Sentinel HA</text>
+        <text x="1040" y="510" fill="#fbbf24" font-size="8">6GB max memory</text>
+        <text x="1040" y="524" fill="#fbbf24" font-size="8">LRU eviction</text>
+
+        <!-- ================================================================
+             ZONE: External Consumers (Bottom)
+             ================================================================ -->
+        <rect x="20" y="580" width="1160" height="120" rx="12" fill="rgba(30, 41, 59, 0.1)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="32" y="600" fill="#94a3b8" font-size="11" font-weight="600">Consumers & Sources</text>
+
+        <!-- CMDB -->
+        <rect x="40" y="615" width="150" height="70" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="115" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">CMDB</text>
+        <text x="115" y="652" fill="#a78bfa" font-size="8" text-anchor="middle">CI ↔ Asset Mapping</text>
+        <text x="115" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Enrichment API consumer</text>
+
+        <!-- DI&I Gateway -->
+        <rect x="210" y="615" width="150" height="70" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="285" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">DI&I Gateway</text>
+        <text x="285" y="652" fill="#fb923c" font-size="8" text-anchor="middle">asset.updates topic</text>
+        <text x="285" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Kafka consumer</text>
+
+        <!-- Analytics Engine -->
+        <rect x="380" y="615" width="150" height="70" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="455" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">Analytics Engine</text>
+        <text x="455" y="652" fill="#fbbf24" font-size="8" text-anchor="middle">Asset metrics</text>
+        <text x="455" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Enrichment API consumer</text>
+
+        <!-- ERP -->
+        <rect x="550" y="615" width="130" height="70" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="615" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">ERP (SAP/Oracle)</text>
+        <text x="615" y="652" fill="#94a3b8" font-size="8" text-anchor="middle">Financial sync</text>
+        <text x="615" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Weekly batch</text>
+
+        <!-- Discovery -->
+        <rect x="700" y="615" width="130" height="70" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="765" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">Discovery (NMS)</text>
+        <text x="765" y="652" fill="#94a3b8" font-size="8" text-anchor="middle">Network scan</text>
+        <text x="765" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Daily batch</text>
+
+        <!-- Dashboard -->
+        <rect x="850" y="615" width="130" height="70" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="915" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">Dashboard</text>
+        <text x="915" y="652" fill="#22d3ee" font-size="8" text-anchor="middle">Asset overview</text>
+        <text x="915" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Read-only</text>
+
+        <!-- Reports -->
+        <rect x="1000" y="615" width="130" height="70" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="1065" y="637" fill="white" font-size="10" font-weight="600" text-anchor="middle">Reports</text>
+        <text x="1065" y="652" fill="#94a3b8" font-size="8" text-anchor="middle">Warranty/Contract</text>
+        <text x="1065" y="666" fill="#94a3b8" font-size="7" text-anchor="middle">Scheduled batch</text>
+
+        <!-- ================================================================
+             CONNECTIONS — API → Service Layer
+             ================================================================ -->
+        <line x1="115" y1="140" x2="115" y2="213" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="285" y1="140" x2="300" y2="213" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrowhead-cyan)"/>
+        <line x1="580" y1="140" x2="655" y2="213" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+        <line x1="750" y1="140" x2="485" y2="213" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+
+        <!-- ================================================================
+             CONNECTIONS — Service Layer → Data Layer
+             ================================================================ -->
+        <line x1="115" y1="315" x2="140" y2="398" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="300" y1="315" x2="345" y2="398" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowhead-emerald)"/>
+        <line x1="485" y1="315" x2="925" y2="398" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowhead-rose)"/>
+        <line x1="655" y1="315" x2="1100" y2="398" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+
+        <!-- ================================================================
+             CONNECTIONS — Data Layer → Consumers
+             ================================================================ -->
+        <line x1="140" y1="540" x2="115" y2="613" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowhead-violet)"/>
+        <line x1="285" y1="540" x2="285" y2="613" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <line x1="455" y1="540" x2="455" y2="613" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrowhead-amber)"/>
+
+        <!-- Reconciliation flow (CMDB → Reconciliation → Asset) -->
+        <path d="M 115 615 L 115 580 Q 115 570 125 570 L 300 570 Q 310 570 310 555 L 310 317" fill="none" stroke="#34d399" stroke-width="1" stroke-dasharray="5,5" marker-end="url(#arrowhead-emerald)"/>
+        <text x="200" y="562" fill="#34d399" font-size="7">reconcile</text>
+
+        <!-- ================================================================
+             LEGEND
+             ================================================================ -->
+        <rect x="20" y="720" width="1160" height="100" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="32" y="740" fill="white" font-size="10" font-weight="600">Legend</text>
+
+        <rect x="32" y="752" width="16" height="10" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="54" y="760" fill="#94a3b8" font-size="8">API Layer</text>
+
+        <rect x="132" y="752" width="16" height="10" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="154" y="760" fill="#94a3b8" font-size="8">Service Layer</text>
+
+        <rect x="262" y="752" width="16" height="10" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="284" y="760" fill="#94a3b8" font-size="8">Database Tables</text>
+
+        <rect x="412" y="752" width="16" height="10" rx="2" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="434" y="760" fill="#94a3b8" font-size="8">Cache / Financial</text>
+
+        <rect x="562" y="752" width="16" height="10" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="584" y="760" fill="#94a3b8" font-size="8">Security / Audit</text>
+
+        <rect x="712" y="752" width="16" height="10" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="734" y="760" fill="#94a3b8" font-size="8">External System</text>
+
+        <line x1="862" y1="757" x2="878" y2="757" stroke="#34d399" stroke-width="1" stroke-dasharray="5,5"/>
+        <text x="884" y="760" fill="#94a3b8" font-size="8">Reconciliation Flow</text>
+
+        <rect x="32" y="775" width="16" height="10" rx="4" fill="transparent" stroke="#94a3b8" stroke-width="1" stroke-dasharray="8,4"/>
+        <text x="54" y="783" fill="#94a3b8" font-size="8">Zone Boundary</text>
+
+        <text x="200" y="783" fill="#94a3b8" font-size="8">Lifecycle: on_order → received → deployed → in_storage → maintenance → retired → disposed</text>
+      </svg>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>PostgreSQL Schema (4 tables)</h3>
+        </div>
+        <ul>
+          <li>• asset — Core asset data (primary)</li>
+          <li>• asset_location — Physical location hierarchy</li>
+          <li>• asset_financial — Depreciation & book value</li>
+          <li>• asset_contract — Warranty, SLA, contracts</li>
+          <li>• asset_audit_log — Immutable change history</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>API Endpoints (6 groups)</h3>
+        </div>
+        <ul>
+          <li>• CRUD — POST/GET/PUT/DELETE assets</li>
+          <li>• Bulk Import — CSV/JSON upsert</li>
+          <li>• Search — Full-text with trigram</li>
+          <li>• Enrichment — CI → Asset (cached)</li>
+          <li>• Audit Trail — Immutable history</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Service Layer</h3>
+        </div>
+        <ul>
+          <li>• Validation — Schema + uniqueness</li>
+          <li>• Reconciliation — CMDB ↔ Asset sync</li>
+          <li>• Lifecycle Manager — State transitions</li>
+          <li>• Depreciation Calculator — Monthly batch</li>
+          <li>• Cache Service — Redis 15min TTL</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Security & Audit</h3>
+        </div>
+        <ul>
+          <li>• RBAC — 5 roles (viewer → auditor)</li>
+          <li>• Immutable audit log (append-only)</li>
+          <li>• Partitioned monthly (7yr retention)</li>
+          <li>• Rate limiting per endpoint</li>
+          <li>• TLS 1.2+ all traffic</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Data Quality</h3>
+        </div>
+        <ul>
+          <li>• Asset_ID uniqueness enforced</li>
+          <li>• Serial + manufacturer unique</li>
+          <li>• 8 mandatory fields</li>
+          <li>• Referential integrity (location, contract)</li>
+          <li>• Daily quality scorecard view</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot orange"></div>
+          <h3>Performance Targets</h3>
+        </div>
+        <ul>
+          <li>• Enrichment p99 < 50ms</li>
+          <li>• CRUD p99 < 100ms</li>
+          <li>• List p99 < 200ms</li>
+          <li>• Bulk import < 30s (500 records)</li>
+          <li>• Cache hit ratio > 80%</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      DCIM Core Platform • Block 3 Asset Repository • Reference Architecture • Generated 2026-06-23
+    </p>
+  </div>
+</body>
+</html>

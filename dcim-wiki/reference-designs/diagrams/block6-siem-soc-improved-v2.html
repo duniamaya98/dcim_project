@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DCIM SIEM/SOC — Improved Architecture (v2)</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 1200px; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 0.75rem;
+      border: 1px solid #1e293b;
+      padding: 1.25rem;
+    }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+    .changelog {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      margin-top: 2rem;
+    }
+    .changelog h2 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .changelog table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .changelog th { text-align: left; padding: 0.5rem; border-bottom: 2px solid #334155; color: white; }
+    .changelog td { padding: 0.5rem; border-bottom: 1px solid #1e293b; color: #94a3b8; }
+    .fix { color: #34d399; }
+    .add { color: #22d3ee; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>DCIM SIEM/SOC — Improved Architecture (v2)</h1>
+      </div>
+      <p class="subtitle">Production-ready · DCIM-aware · 3 VLAN segmentation · Kafka buffered · HA · Compliance · OT/IT convergence</p>
+    </div>
+
+    <!-- Main Diagram -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 1300 1350">
+        <!-- Definitions -->
+        <defs>
+          <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#64748b"/>
+          </marker>
+          <marker id="arrowCyan" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#22d3ee"/>
+          </marker>
+          <marker id="arrowEmerald" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#34d399"/>
+          </marker>
+          <marker id="arrowAmber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#fbbf24"/>
+          </marker>
+          <marker id="arrowRose" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#fb7185"/>
+          </marker>
+          <marker id="arrowOrange" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#fb923c"/>
+          </marker>
+          <marker id="arrowViolet" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#a78bfa"/>
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+          <!-- Lock icon for TLS -->
+          <g id="lockIcon">
+            <rect x="-4" y="-2" width="8" height="6" rx="1" fill="none" stroke="#34d399" stroke-width="0.8"/>
+            <path d="M -2 -2 L -2 -4 Q 0 -6 2 -4 L 2 -2" fill="none" stroke="#34d399" stroke-width="0.8"/>
+          </g>
+        </defs>
+
+        <!-- Background Grid -->
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+
+        <!-- ================================================================
+             VLAN BOUNDARY: DMZ (Sources)
+             ================================================================ -->
+        <rect x="10" y="10" width="340" height="280" rx="12" fill="rgba(136, 19, 55, 0.04)" stroke="#fb7185" stroke-width="1.2" stroke-dasharray="10,5"/>
+        <text x="22" y="28" fill="#fb7185" font-size="10" font-weight="700">🔒 VLAN 10 — DMZ (Security Sources)</text>
+
+        <!-- IT Sources -->
+        <rect x="25" y="42" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="100" y="58" fill="white" font-size="9" font-weight="600" text-anchor="middle">🖥 Endpoints</text>
+        <text x="100" y="71" fill="#94a3b8" font-size="7" text-anchor="middle">Windows · Linux · EDR/XDR</text>
+
+        <rect x="190" y="42" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="265" y="58" fill="white" font-size="9" font-weight="600" text-anchor="middle">🌐 Network</text>
+        <text x="265" y="71" fill="#94a3b8" font-size="7" text-anchor="middle">Firewall · Switch · NDR</text>
+
+        <rect x="25" y="90" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="100" y="106" fill="white" font-size="9" font-weight="600" text-anchor="middle">☁ Applications</text>
+        <text x="100" y="119" fill="#94a3b8" font-size="7" text-anchor="middle">Web · Cloud · SaaS · DNS</text>
+
+        <rect x="190" y="90" width="150" height="36" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="265" y="106" fill="white" font-size="9" font-weight="600" text-anchor="middle">🔑 Identity</text>
+        <text x="265" y="119" fill="#94a3b8" font-size="7" text-anchor="middle">Azure AD · AWS IAM · VPN</text>
+
+        <!-- DCIM OT Sources -->
+        <rect x="25" y="140" width="315" height="20" rx="3" fill="rgba(251, 191, 36, 0.1)"/>
+        <text x="182" y="153" fill="#fbbf24" font-size="7" font-weight="600" text-anchor="middle">▼ DCIM OT/Physical Sources ▼</text>
+
+        <rect x="25" y="165" width="100" height="36" rx="6" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="75" y="180" fill="white" font-size="8" font-weight="600" text-anchor="middle">⚡ Power</text>
+        <text x="75" y="193" fill="#94a3b8" font-size="7" text-anchor="middle">UPS · PDU · ATS</text>
+
+        <rect x="135" y="165" width="100" height="36" rx="6" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="185" y="180" fill="white" font-size="8" font-weight="600" text-anchor="middle">❄ Cooling</text>
+        <text x="185" y="193" fill="#94a3b8" font-size="7" text-anchor="middle">CRAC · Chiller · Humid</text>
+
+        <rect x="240" y="165" width="100" height="36" rx="6" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="290" y="180" fill="white" font-size="8" font-weight="600" text-anchor="middle">🌡 Env</text>
+        <text x="290" y="193" fill="#94a3b8" font-size="7" text-anchor="middle">Temp · Water · Door</text>
+
+        <!-- OT Protocols -->
+        <rect x="25" y="215" width="315" height="36" rx="6" fill="rgba(251, 191, 36, 0.15)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="182" y="232" fill="#fbbf24" font-size="8" font-weight="600" text-anchor="middle">OT Protocols: Modbus TCP · BACnet · SNMPv3 · DNP3</text>
+        <text x="182" y="244" fill="#94a3b8" font-size="7" text-anchor="middle">BMS/EPMS: Schneider EcoStruxure · Vertiv · Sunbird</text>
+
+        <!-- Vulnerability Scanner -->
+        <rect x="25" y="260" width="150" height="25" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="100" y="276" fill="white" font-size="8" font-weight="600" text-anchor="middle">🔍 Vulnerability Scan</text>
+        <text x="100" y="276" fill="#94a3b8" font-size="7" text-anchor="middle" dx="0" dy="12">Tenable · Qualys · Daily</text>
+
+        <rect x="190" y="260" width="150" height="25" rx="4" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="265" y="276" fill="white" font-size="8" font-weight="600" text-anchor="middle">📋 CIS Benchmark</text>
+        <text x="265" y="276" fill="#94a3b8" font-size="7" text-anchor="middle" dx="0" dy="12">Automated Compliance</text>
+
+        <!-- ================================================================
+             VLAN BOUNDARY: Data VLAN (Processing)
+             ================================================================ -->
+        <rect x="370" y="10" width="920" height="480" rx="12" fill="rgba(6, 78, 59, 0.04)" stroke="#34d399" stroke-width="1.2" stroke-dasharray="10,5"/>
+        <text x="382" y="28" fill="#34d399" font-size="10" font-weight="700">🔒 VLAN 20 — Data (Processing &amp; Storage)</text>
+
+        <!-- ─── COLLECTION TIER ─── -->
+        <rect x="382" y="40" width="180" height="90" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="472" y="58" fill="white" font-size="10" font-weight="700" text-anchor="middle">Fleet / Agent</text>
+        <text x="472" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">Agent Management</text>
+        <text x="472" y="86" fill="#94a3b8" font-size="8" text-anchor="middle">Syslog Collector :514</text>
+        <text x="472" y="100" fill="#22d3ee" font-size="7" text-anchor="middle">NiFi Syslog Processor</text>
+        <text x="472" y="114" fill="#34d399" font-size="7" text-anchor="middle">✓ TLS 1.2+ inbound</text>
+        <text x="472" y="124" fill="#94a3b8" font-size="7" text-anchor="middle">N+1 HA · Load Balanced</text>
+
+        <!-- Arrow: Sources → Fleet (across VLAN boundary) -->
+        <line x1="340" y1="150" x2="380" y2="85" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowRose)"/>
+        <text x="355" y="110" fill="#fb7185" font-size="7">Syslog/TLS</text>
+        <text x="355" y="120" fill="#34d399" font-size="7">🔒</text>
+
+        <!-- ─── MESSAGE BROKER (Kafka) ─── -->
+        <rect x="590" y="40" width="160" height="90" rx="8" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="2"/>
+        <text x="670" y="60" fill="white" font-size="11" font-weight="700" text-anchor="middle">Kafka</text>
+        <text x="670" y="76" fill="#fbbf24" font-size="8" text-anchor="middle">dcim.siem.events</text>
+        <text x="670" y="88" fill="#94a3b8" font-size="7" text-anchor="middle">12 partitions · RF=3</text>
+        <text x="670" y="100" fill="#94a3b8" font-size="7" text-anchor="middle">Retention: 30d</text>
+        <text x="670" y="112" fill="#fb923c" font-size="7" text-anchor="middle">3 Brokers · KRaft</text>
+        <text x="670" y="124" fill="#34d399" font-size="7" text-anchor="middle">✓ Buffer + Replay + Fan-out</text>
+
+        <!-- Arrow: Fleet → Kafka -->
+        <line x1="562" y1="85" x2="588" y2="85" stroke="#fb923c" stroke-width="2" marker-end="url(#arrowOrange)"/>
+
+        <!-- DLQ -->
+        <rect x="590" y="140" width="160" height="25" rx="4" fill="rgba(251, 191, 36, 0.15)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="670" y="156" fill="#fbbf24" font-size="8" font-weight="600" text-anchor="middle">DLQ: dcim.siem.dlq</text>
+
+        <!-- Arrow: Kafka → DLQ -->
+        <line x1="670" y1="130" x2="670" y2="138" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>
+
+        <!-- ─── ELK STACK (correct order) ─── -->
+        <!-- Logstash -->
+        <rect x="790" y="40" width="120" height="70" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="850" y="58" fill="white" font-size="10" font-weight="600" text-anchor="middle">Logstash</text>
+        <text x="850" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">Parse · Enrich</text>
+        <text x="850" y="84" fill="#94a3b8" font-size="8" text-anchor="middle">ECS Normalization</text>
+        <text x="850" y="98" fill="#94a3b8" font-size="7" text-anchor="middle">N+1 · Load Balanced</text>
+
+        <!-- Arrow: Kafka → Logstash -->
+        <line x1="750" y1="70" x2="788" y2="70" stroke="#94a3b8" stroke-width="1.5" marker-end="url(#arrowGray)"/>
+
+        <!-- Elasticsearch -->
+        <rect x="940" y="40" width="130" height="70" rx="8" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="2"/>
+        <text x="1005" y="58" fill="white" font-size="10" font-weight="700" text-anchor="middle">Elasticsearch</text>
+        <text x="1005" y="72" fill="#94a3b8" font-size="8" text-anchor="middle">dcim-siem-*</text>
+        <text x="1005" y="84" fill="#a78bfa" font-size="7" text-anchor="middle">ILM: Hot/Warm/Cold</text>
+        <text x="1005" y="96" fill="#94a3b8" font-size="7" text-anchor="middle">3 Master + 3 Data</text>
+        <text x="1005" y="108" fill="#34d399" font-size="7" text-anchor="middle">✓ Encryption-at-Rest</text>
+
+        <!-- Arrow: Logstash → ES -->
+        <line x1="910" y1="75" x2="938" y2="75" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowViolet)"/>
+
+        <!-- Kibana (branch from ES, not inline) -->
+        <rect x="940" y="130" width="130" height="50" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="1005" y="150" fill="white" font-size="10" font-weight="600" text-anchor="middle">Kibana</text>
+        <text x="1005" y="164" fill="#94a3b8" font-size="8" text-anchor="middle">SOC View · Dashboards</text>
+        <text x="1005" y="174" fill="#22d3ee" font-size="7" text-anchor="middle">RBAC · SSO</text>
+
+        <!-- Arrow: ES → Kibana (branch) -->
+        <line x1="1005" y1="110" x2="1005" y2="128" stroke="#22d3ee" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowCyan)"/>
+
+        <!-- ─── DETECTION & CORRELATION ─── -->
+        <rect x="382" y="190" width="540" height="55" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="472" y="210" fill="white" font-size="10" font-weight="700" text-anchor="start" dx="8">Detection Rules &amp; Correlation Engine</text>
+        <text x="472" y="225" fill="#94a3b8" font-size="8" text-anchor="start" dx="8">MITRE ATT&CK Mapping · Threshold · ML Anomaly · Cross-source Pattern</text>
+        <text x="472" y="238" fill="#fb7185" font-size="7" text-anchor="start" dx="8">Real-time · &lt;5s detection latency · Detection-as-Code (Git CI/CD)</text>
+
+        <!-- Arrow: ES → Detection (query) -->
+        <line x1="940" y1="100" x2="920" y2="190" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowRose)"/>
+
+        <!-- ─── ALERT ENGINE ─── -->
+        <rect x="382" y="260" width="200" height="50" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="482" y="280" fill="white" font-size="9" font-weight="600" text-anchor="middle">Alert Engine</text>
+        <text x="482" y="296" fill="#94a3b8" font-size="8" text-anchor="middle">Real-time · &lt;30s SLA</text>
+
+        <!-- Arrow: Detection → Alert -->
+        <line x1="482" y1="245" x2="482" y2="258" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrowRose)"/>
+
+        <!-- ─── CMDB / ASSET ENRICHMENT ─── -->
+        <rect x="610" y="260" width="200" height="50" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="710" y="280" fill="white" font-size="9" font-weight="600" text-anchor="middle">CMDB / Asset Enrichment</text>
+        <text x="710" y="296" fill="#94a3b8" font-size="8" text-anchor="middle">CI Context · Impact Analysis</text>
+
+        <!-- Arrow: Alert → CMDB (enrichment) -->
+        <line x1="582" y1="285" x2="608" y2="285" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowEmerald)"/>
+
+        <!-- ─── SOC METRICS ─── -->
+        <rect x="840" y="260" width="230" height="50" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="955" y="278" fill="white" font-size="9" font-weight="600" text-anchor="middle">📊 SOC Metrics Dashboard</text>
+        <text x="955" y="292" fill="#94a3b8" font-size="7" text-anchor="middle">MTTD · MTTR · Alert Volume · FP Rate · SLA Compliance</text>
+        <text x="955" y="304" fill="#22d3ee" font-size="7" text-anchor="middle">Grafana · Real-time KPI</text>
+
+        <!-- Arrow: Detection → Metrics -->
+        <line x1="922" y1="218" x2="955" y2="258" stroke="#22d3ee" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrowCyan)"/>
+
+        <!-- ================================================================
+             VLAN BOUNDARY: Management VLAN (SOAR + IRIS)
+             ================================================================ -->
+        <rect x="10" y="510" width="1280" height="280" rx="12" fill="rgba(251, 191, 36, 0.04)" stroke="#fbbf24" stroke-width="1.2" stroke-dasharray="10,5"/>
+        <text x="22" y="528" fill="#fbbf24" font-size="10" font-weight="700">🔒 VLAN 30 — Management (SOAR · Incident Mgmt · Vault)</text>
+
+        <!-- ─── TRACECAT (SOAR) ─── -->
+        <rect x="25" y="540" width="280" height="110" rx="8" fill="rgba(251, 146, 60, 0.2)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="165" y="558" fill="white" font-size="11" font-weight="700" text-anchor="middle">TraceCat (SOAR)</text>
+        <text x="165" y="572" fill="#94a3b8" font-size="8" text-anchor="middle">Security Orchestration &amp; Auto-Response</text>
+
+        <!-- SOAR internal flow -->
+        <rect x="35" y="580" width="60" height="30" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="65" y="598" fill="white" font-size="7" font-weight="600" text-anchor="middle">Webhook</text>
+        <text x="65" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Trigger</text>
+
+        <line x1="95" y1="595" x2="108" y2="595" stroke="#fb923c" stroke-width="1" marker-end="url(#arrowOrange)"/>
+
+        <rect x="110" y="580" width="60" height="30" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="140" y="598" fill="white" font-size="7" font-weight="600" text-anchor="middle">Workflow</text>
+        <text x="140" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Engine</text>
+
+        <line x1="170" y1="595" x2="183" y2="595" stroke="#fb923c" stroke-width="1" marker-end="url(#arrowOrange)"/>
+
+        <rect x="185" y="580" width="55" height="30" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="212" y="598" fill="white" font-size="7" font-weight="600" text-anchor="middle">Enrich</text>
+        <text x="212" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Intel/IOC</text>
+
+        <line x1="240" y1="595" x2="253" y2="595" stroke="#fb923c" stroke-width="1" marker-end="url(#arrowOrange)"/>
+
+        <rect x="255" y="580" width="40" height="30" rx="4" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="275" y="598" fill="white" font-size="7" font-weight="600" text-anchor="middle">Cases</text>
+
+        <!-- Playbook Actions -->
+        <rect x="35" y="618" width="260" height="26" rx="4" fill="rgba(251, 146, 60, 0.15)"/>
+        <text x="165" y="634" fill="#fb923c" font-size="8" font-weight="600" text-anchor="middle">Triage → Enrich → Correlate → Notify → Incident</text>
+
+        <!-- Playbook features -->
+        <text x="35" y="660" fill="#94a3b8" font-size="7">✓ Branching · Loops · Human-in-the-loop · Version Control</text>
+        <text x="35" y="672" fill="#94a3b8" font-size="7">✓ OT-safe rules (no auto-patch/reboot DCIM systems)</text>
+        <text x="35" y="684" fill="#34d399" font-size="7">✓ HA: 2 replicas · Redis-backed queue</text>
+
+        <!-- Arrow: Alert Engine → SOAR (across VLAN) -->
+        <path d="M 482 310 L 482 400 Q 482 420 460 430 L 165 540" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowOrange)"/>
+        <text x="330" y="430" fill="#fb923c" font-size="7">Alert Webhook · TLS</text>
+        <text x="330" y="440" fill="#34d399" font-size="7">🔒</text>
+
+        <!-- ─── DFIR-IRIS (Incident Management) ─── -->
+        <rect x="330" y="540" width="300" height="110" rx="8" fill="rgba(167, 139, 250, 0.15)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="480" y="558" fill="white" font-size="11" font-weight="700" text-anchor="middle">DFIR-IRIS</text>
+        <text x="480" y="572" fill="#94a3b8" font-size="8" text-anchor="middle">Incident Case Management</text>
+
+        <rect x="340" y="580" width="65" height="30" rx="4" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="372" y="596" fill="white" font-size="7" font-weight="600" text-anchor="middle">Incidents</text>
+        <text x="372" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Auto via API</text>
+
+        <rect x="415" y="580" width="55" height="30" rx="4" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="442" y="596" fill="white" font-size="7" font-weight="600" text-anchor="middle">Timeline</text>
+        <text x="442" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Reconstruct</text>
+
+        <rect x="480" y="580" width="55" height="30" rx="4" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="507" y="596" fill="white" font-size="7" font-weight="600" text-anchor="middle">IOC</text>
+        <text x="507" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">Tracking</text>
+
+        <rect x="545" y="580" width="75" height="30" rx="4" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="582" y="596" fill="white" font-size="7" font-weight="600" text-anchor="middle">Evidence</text>
+        <text x="582" y="606" fill="#94a3b8" font-size="6" text-anchor="middle">WORM Storage</text>
+
+        <text x="340" y="640" fill="#94a3b8" font-size="7">Analyst Collaboration · Task Assignment · Report Gen · Audit Trail</text>
+        <text x="340" y="652" fill="#34d399" font-size="7">✓ mTLS Auth · RBAC · Encrypted-at-Rest · Backup Daily</text>
+        <text x="340" y="664" fill="#a78bfa" font-size="7">✓ HA: 2 replicas · PostgreSQL HA</text>
+
+        <!-- Arrow: SOAR → IRIS -->
+        <line x1="305" y1="595" x2="328" y2="595" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#arrowViolet)"/>
+        <text x="316" y="588" fill="#a78bfa" font-size="7">API</text>
+
+        <!-- ─── HASHICORP VAULT ─── -->
+        <rect x="660" y="540" width="140" height="80" rx="8" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="730" y="558" fill="white" font-size="10" font-weight="700" text-anchor="middle">🔐 Vault</text>
+        <text x="730" y="572" fill="#94a3b8" font-size="8" text-anchor="middle">Secrets Management</text>
+        <text x="730" y="586" fill="#94a3b8" font-size="7" text-anchor="middle">API Tokens · Keys</text>
+        <text x="730" y="598" fill="#94a3b8" font-size="7" text-anchor="middle">Auto-rotation · TTL</text>
+        <text x="730" y="612" fill="#fbbf24" font-size="7" text-anchor="middle">✓ HA 3 nodes · Seal/Unseal</text>
+
+        <!-- Arrows: Vault → SOAR, IRIS (secret injection) -->
+        <path d="M 660 580 L 310 580" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>
+        <text x="480" y="576" fill="#fbbf24" font-size="6">secrets</text>
+        <path d="M 660 600 L 635 600" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,3"/>
+
+        <!-- ─── THREAT INTEL PLATFORM ─── -->
+        <rect x="660" y="640" width="140" height="55" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1.5"/>
+        <text x="730" y="658" fill="white" font-size="9" font-weight="600" text-anchor="middle">MISP / TIP</text>
+        <text x="730" y="672" fill="#94a3b8" font-size="8" text-anchor="middle">STIX/TAXII Feeds</text>
+        <text x="730" y="686" fill="#94a3b8" font-size="7" text-anchor="middle">IOC Enrichment</text>
+
+        <!-- Arrow: TIP ↔ SOAR (bidirectional) -->
+        <line x1="660" y1="660" x2="308" y2="610" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowGray)"/>
+        <text x="480" y="635" fill="#94a3b8" font-size="6">enrichment</text>
+
+        <!-- Arrow: TIP ↔ IRIS (IOC sync) -->
+        <line x1="660" y1="660" x2="635" y2="610" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowViolet)"/>
+        <text x="650" y="640" fill="#a78bfa" font-size="6">IOC sync</text>
+
+        <!-- ─── COMPLIANCE ENGINE ─── -->
+        <rect x="830" y="540" width="200" height="55" rx="6" fill="rgba(251, 191, 36, 0.15)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="930" y="558" fill="white" font-size="9" font-weight="600" text-anchor="middle">Compliance Engine</text>
+        <text x="930" y="572" fill="#94a3b8" font-size="8" text-anchor="middle">NIST 800-61 · ISO 27035</text>
+        <text x="930" y="586" fill="#94a3b8" font-size="8" text-anchor="middle">PCI-DSS · SOC2 · HIPAA</text>
+
+        <rect x="830" y="610" width="200" height="35" rx="4" fill="rgba(251, 191, 36, 0.1)"/>
+        <text x="930" y="632" fill="#fbbf24" font-size="8" font-weight="600" text-anchor="middle">Daily Scan · Gap Analysis · Report</text>
+
+        <!-- Arrow: CIS Scanner → Compliance -->
+        <path d="M 100 285 Q 100 400 500 540" fill="none" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrowAmber)"/>
+
+        <!-- ─── PAM Integration ─── -->
+        <rect x="830" y="660" width="200" height="35" rx="6" fill="rgba(136, 19, 55, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="930" y="682" fill="white" font-size="8" font-weight="600" text-anchor="middle">🔐 PAM Integration</text>
+        <text x="930" y="693" fill="#94a3b8" font-size="7" text-anchor="middle">Privileged Access for Response Actions</text>
+
+        <!-- ================================================================
+             VLAN BOUNDARY: Output Layer
+             ================================================================ -->
+        <rect x="10" y="810" width="1280" height="200" rx="12" fill="rgba(52, 211, 153, 0.04)" stroke="#34d399" stroke-width="1.2" stroke-dasharray="10,5"/>
+        <text x="22" y="828" fill="#34d399" font-size="10" font-weight="700">OUTPUT — Notifications · Ticketing · Feedback Loop</text>
+
+        <!-- Notifications -->
+        <rect x="25" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="100" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">📢 Notifications</text>
+        <text x="100" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">Slack · Email · Teams</text>
+
+        <!-- Ticketing -->
+        <rect x="195" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="270" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">🎫 Ticketing</text>
+        <text x="270" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">Jira · ServiceNow</text>
+
+        <!-- Threat Intel Feedback -->
+        <rect x="365" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="440" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">🔄 Threat Intel</text>
+        <text x="440" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">MISP · VirusTotal</text>
+
+        <!-- Rule Tuning Feedback -->
+        <rect x="535" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="610" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">🔧 Rule Tuning</text>
+        <text x="610" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">Feedback → Detection</text>
+
+        <!-- Evidence Archive -->
+        <rect x="705" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="780" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">🗄 Evidence Archive</text>
+        <text x="780" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">WORM · Immutable</text>
+
+        <!-- Compliance Report -->
+        <rect x="875" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="950" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">📋 Compliance Report</text>
+        <text x="950" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">PCI · SOC2 · ISO</text>
+
+        <!-- Backup/DR -->
+        <rect x="1045" y="842" width="150" height="45" rx="6" fill="rgba(52, 211, 153, 0.2)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1120" y="860" fill="white" font-size="9" font-weight="600" text-anchor="middle">💾 Backup / DR</text>
+        <text x="1120" y="876" fill="#94a3b8" font-size="8" text-anchor="middle">ES Snapshots · RPO 1h</text>
+
+        <!-- Arrows: SOAR → Output -->
+        <line x1="165" y1="680" x2="165" y2="840" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowEmerald)"/>
+        <line x1="270" y1="680" x2="270" y2="840" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrowEmerald)"/>
+
+        <!-- Feedback loop: Tuning → Detection -->
+        <path d="M 610 842 L 610 800 Q 610 780 590 775 L 482 245" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrowRose)"/>
+        <text x="550" y="770" fill="#fb7185" font-size="7">feedback loop</text>
+
+        <!-- ================================================================
+             LEGEND (right side, below VLAN 20)
+             ================================================================ -->
+        <rect x="1050" y="40" width="230" height="160" rx="8" fill="rgba(15, 23, 42, 0.85)" stroke="#1e293b" stroke-width="1"/>
+        <text x="1062" y="58" fill="white" font-size="10" font-weight="600">Legend</text>
+
+        <rect x="1062" y="68" width="14" height="8" rx="2" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="1082" y="75" fill="#94a3b8" font-size="7">Security / Alert</text>
+
+        <rect x="1062" y="80" width="14" height="8" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="1082" y="87" fill="#94a3b8" font-size="7">Message Broker</text>
+
+        <rect x="1062" y="92" width="14" height="8" rx="2" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="1082" y="99" fill="#94a3b8" font-size="7">Database / Storage</text>
+
+        <rect x="1062" y="104" width="14" height="8" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="1082" y="111" fill="#94a3b8" font-size="7">Backend / CMDB</text>
+
+        <rect x="1062" y="116" width="14" height="8" rx="2" fill="rgba(251, 191, 36, 0.2)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="1082" y="123" fill="#94a3b8" font-size="7">Compliance / OT</text>
+
+        <rect x="1062" y="128" width="14" height="8" rx="2" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="1082" y="135" fill="#94a3b8" font-size="7">Collector / External</text>
+
+        <line x1="1062" y1="148" x2="1076" y2="148" stroke="#34d399" stroke-width="1"/>
+        <text x="1082" y="151" fill="#94a3b8" font-size="7">TLS / Encrypted</text>
+
+        <line x1="1062" y1="160" x2="1076" y2="160" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="1082" y="163" fill="#94a3b8" font-size="7">Cross-VLAN Flow</text>
+
+        <rect x="1062" y="172" width="14" height="8" rx="2" fill="transparent" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="1082" y="179" fill="#94a3b8" font-size="7">VLAN Boundary</text>
+
+        <!-- ================================================================
+             HA / DR ANNOTATIONS (right side)
+             ================================================================ -->
+        <rect x="1050" y="220" width="230" height="120" rx="8" fill="rgba(52, 211, 153, 0.08)" stroke="#34d399" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="1062" y="238" fill="#34d399" font-size="9" font-weight="600">HA / DR Summary</text>
+        <text x="1062" y="254" fill="#94a3b8" font-size="7">Fleet: N+1 LB</text>
+        <text x="1062" y="266" fill="#94a3b8" font-size="7">Kafka: 3 brokers · RF=3</text>
+        <text x="1062" y="278" fill="#94a3b8" font-size="7">ES: 3 master + 3 data</text>
+        <text x="1062" y="290" fill="#94a3b8" font-size="7">Logstash: N+1 LB</text>
+        <text x="1062" y="302" fill="#94a3b8" font-size="7">TraceCat: 2 replicas</text>
+        <text x="1062" y="314" fill="#94a3b8" font-size="7">IRIS: 2 replicas · PG HA</text>
+        <text x="1062" y="326" fill="#94a3b8" font-size="7">Vault: 3 nodes HA</text>
+
+        <!-- ================================================================
+             BOTTOM: Security Annotations
+             ================================================================ -->
+        <rect x="10" y="1030" width="1280" height="80" rx="8" fill="rgba(136, 19, 55, 0.06)" stroke="#fb7185" stroke-width="1"/>
+        <text x="22" y="1048" fill="#fb7185" font-size="10" font-weight="700">Security Hardening</text>
+
+        <text x="22" y="1066" fill="#94a3b8" font-size="8">✓ TLS 1.2+ semua cross-VLAN traffic</text>
+        <text x="22" y="1080" fill="#94a3b8" font-size="8">✓ RBAC + SSO (Keycloak/OIDC) untuk Kibana, TraceCat, IRIS</text>
+        <text x="22" y="1094" fill="#94a3b8" font-size="8">✓ Encryption-at-Rest (ES, IRIS, Vault)</text>
+
+        <text x="500" y="1066" fill="#94a3b8" font-size="8">✓ mTLS antar komponen (Vault PKI)</text>
+        <text x="500" y="1080" fill="#94a3b8" font-size="8">✓ Audit trail semua aksi SOC analyst</text>
+        <text x="500" y="1094" fill="#94a3b8" font-size="8">✓ Immutable/WORM evidence storage</text>
+
+        <text x="950" y="1066" fill="#94a3b8" font-size="8">✓ PAM untuk response actions</text>
+        <text x="950" y="1080" fill="#94a3b8" font-size="8">✓ OT-safe playbooks (no auto-reboot)</text>
+        <text x="950" y="1094" fill="#94a3b8" font-size="8">✓ Meta-monitoring SOC stack</text>
+
+        <!-- Footer -->
+        <text x="650" y="1135" fill="#475569" font-size="8" text-anchor="middle">DCIM Core Platform · Block 6 SIEM/SOC · Improved Architecture v2 · Generated 2026-06-24</text>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Fix dari Review</h3>
+        </div>
+        <ul>
+          <li>• ✅ ELK order diperbaiki: Fleet → Logstash → ES → Kibana</li>
+          <li>• ✅ Arrow Detection → SOAR ditambahkan</li>
+          <li>• ✅ Bearer token dihapus, pakai Vault reference</li>
+          <li>• ✅ Kafka ditambahkan sebagai buffer</li>
+          <li>• ✅ HA markers untuk semua komponen</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Tambahan DCIM-Aware</h3>
+        </div>
+        <ul>
+          <li>• ➕ OT Sources: Power, Cooling, Environmental</li>
+          <li>• ➕ OT Protocols: Modbus, BACnet, SNMPv3, DNP3</li>
+          <li>• ➕ CMDB/Asset Enrichment untuk alert context</li>
+          <li>• ➕ OT-safe playbooks (no auto-reboot DCIM)</li>
+          <li>• ➕ Vulnerability Scanner integration</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Production-Ready</h3>
+        </div>
+        <ul>
+          <li>• ➕ 3 VLAN segmentation (DMZ/Data/Mgmt)</li>
+          <li>• ➕ TLS/encryption indicators</li>
+          <li>• ➕ RBAC/SSO untuk semua UI</li>
+          <li>• ➕ Compliance engine (NIST/ISO/PCI/SOC2)</li>
+          <li>• ➕ PAM integration</li>
+          <li>• ➕ SOC Metrics (MTTD/MTTR/SLA)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Changelog -->
+    <div class="changelog">
+      <h2>📝 Changelog: v1 → v2</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:8%">#</th>
+            <th style="width:12%">Priority</th>
+            <th style="width:35%">Change</th>
+            <th style="width:45%">Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td class="fix">FIX</td>
+            <td>ELK component order</td>
+            <td>Fleet/Agent → Logstash → Elasticsearch → Kibana (bukan sebaliknya)</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td class="fix">FIX</td>
+            <td>Alert → SOAR handoff</td>
+            <td>Arrow dari Detection Rules ke TraceCat Webhook Trigger (TLS)</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td class="fix">FIX</td>
+            <td>Bearer token removal</td>
+            <td>Token tidak terekspos; semua secrets di HashiCorp Vault</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td class="add">ADD</td>
+            <td>Kafka message broker</td>
+            <td>Buffer antara Fleet → Logstash, replay 30d, fan-out, DLQ</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td class="add">ADD</td>
+            <td>HA/DR markers</td>
+            <td>N+1 untuk semua komponen, ES 3M+3D, Kafka 3 brokers, Vault 3 nodes</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td class="add">ADD</td>
+            <td>DCIM OT sources</td>
+            <td>Power (UPS/PDU), Cooling (CRAC/Chiller), Env (Temp/Water/Door)</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td class="add">ADD</td>
+            <td>OT protocols</td>
+            <td>Modbus TCP, BACnet, SNMPv3, DNP3 + BMS integration</td>
+          </tr>
+          <tr>
+            <td>8</td>
+            <td class="add">ADD</td>
+            <td>CMDB/Asset enrichment</td>
+            <td>CI context + impact analysis untuk alert enrichment</td>
+          </tr>
+          <tr>
+            <td>9</td>
+            <td class="add">ADD</td>
+            <td>3 VLAN segmentation</td>
+            <td>DMZ (Sources) → Data (Processing) → Management (SOAR/IRIS)</td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td class="add">ADD</td>
+            <td>Security hardening</td>
+            <td>TLS 1.2+, mTLS, RBAC/SSO, encryption-at-rest, PAM, WORM</td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td class="add">ADD</td>
+            <td>Compliance engine</td>
+            <td>NIST 800-61, ISO 27035, PCI-DSS, SOC2, HIPAA reporting</td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td class="add">ADD</td>
+            <td>SOC metrics</td>
+            <td>MTTD, MTTR, Alert Volume, FP Rate, SLA Compliance dashboard</td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td class="add">ADD</td>
+            <td>Feedback loop</td>
+            <td>Rule Tuning → Detection (closed-loop improvement)</td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td class="add">ADD</td>
+            <td>OT-safe playbooks</td>
+            <td>DCIM systems tidak auto-patch/reboot; enforced di SOAR</td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td class="add">ADD</td>
+            <td>PAM integration</td>
+            <td>Privileged access untuk response actions ke production</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <p class="footer">
+      DCIM Core Platform · Block 6 SIEM/SOC · Improved Architecture v2 · Generated 2026-06-24
+    </p>
+  </div>
+</body>
+</html>

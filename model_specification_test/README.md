@@ -1,6 +1,6 @@
 # Model Specification Test Suite
 
-> **Tujuan:** Pengujian empiris 22 capability parameter pada model LLM yang di-benchmark di MT-023
+> **Tujuan:** Pengujian empiris 23 capability parameter pada model LLM yang di-benchmark di MT-023
 > **Tanggal:** 2 Juni 2026
 > **Server:** srv-rnd-llm (192.168.100.35)
 
@@ -63,6 +63,18 @@ pip install -r requirements.txt
 
 # 3. Edit config.py sesuai endpoint model
 ```
+
+### Manual Testing via llama.cpp Web UI
+
+Jika ingin menguji model secara manual dari browser seperti web UI bawaan `llama.cpp`, gunakan panduan:
+
+- [MANUAL_LLAMA_CPP_WEBUI_TESTING.md](MANUAL_LLAMA_CPP_WEBUI_TESTING.md)
+
+Panduan tersebut memetakan level `Basic` sampai `Master` ke prompt manual, rubrik skor, template pencatatan, dan batasan capability yang membutuhkan tool nyata.
+
+Untuk menguji semua 23 capability secara manual tetapi tetap ringkas, gunakan panduan kompresi:
+
+- [ALL_CAPABILITIES_COMPRESSED_WEBUI_TESTING.md](ALL_CAPABILITIES_COMPRESSED_WEBUI_TESTING.md)
 
 ### 1. Auto-Detect & Jalankan (Rekomendasi)
 
@@ -153,6 +165,7 @@ Setiap capability diuji dengan **3-5 test cases** dan di-scoring:
 | 20 | Delegation | Task routing accuracy |
 | 21 | Skills | Skill listing, execution |
 | 22 | Context Engine | Context switching, tool loading |
+| 23 | Mixture of Agents | Multi-agent coordination, task delegation |
 
 ## Model yang Diuji
 

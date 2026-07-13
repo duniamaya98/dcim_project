@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-consumer
+  namespace: dcim-analytics
+  labels:
+    app: metrics-consumer
+    component: ingestion
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: metrics-consumer
+  template:
+    metadata:
+      labels:
+        app: metrics-consumer
+        component: ingestion
+    spec:
+      containers:
+      - name: consumer
+        image: dcim-analytics-consumer:latest
+        imagePullPolicy: IfNotPresent
+        command: ["python", "-m", "stream.metrics_consumer"]
+        envFrom:
+        - configMapRef:
+            name: analytics-config
+        - secretRef:
+            name: analytics-secrets
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"

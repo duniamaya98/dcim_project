@@ -96,8 +96,8 @@ class AnomalyService:
             drift_level=drift_level
         )
 
-# Aggregate temporal correlation
-temporal_features = self.correlation_buffer.aggregate()
+        # Aggregate temporal correlation
+        temporal_features = self.correlation_buffer.aggregate()
 
         # =========================
         # 7️⃣ Final Response
@@ -109,5 +109,6 @@ temporal_features = self.correlation_buffer.aggregate()
             "drift_level": drift_level,
             "drift_scores": z_scores,
             "domain_scores": domain_scores,
-            "correlation": correlation_result
+            "correlation": correlation_result,
+            "temporal_features": temporal_features,
         }
