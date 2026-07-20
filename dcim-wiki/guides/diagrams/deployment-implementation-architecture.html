@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DCIM SIEM/SOAR Deployment Architecture — WITH Kafka</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #020617;
+    font-family: 'JetBrains Mono', monospace;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  .diagram-container {
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+  }
+  .diagram-container svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .info-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 32px 40px;
+    background: #0a0f1f;
+    border-top: 1px solid #1e293b;
+  }
+  .info-card {
+    background: #111827;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .info-card h3 {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #1e293b;
+  }
+  .info-card p {
+    font-size: 10px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .info-card.siem h3 { color: #34d399; }
+  .info-card.kafka h3 { color: #fb923c; }
+  .info-card.soar h3 { color: #fb7185; }
+  .info-card.security h3 { color: #fb7185; }
+  .info-card.monitor h3 { color: #a78bfa; }
+  .info-card.enrich h3 { color: #fbbf24; }
+  .footer {
+    text-align: center;
+    padding: 20px 40px;
+    background: #0a0f1f;
+    border-top: 1px solid #1e293b;
+    font-size: 11px;
+    color: #64748b;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+<div class="diagram-container">
+<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Grid pattern -->
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5" opacity="0.4"/>
+    </pattern>
+    <!-- Arrow markers -->
+    <marker id="arrow-amber" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#fbbf24"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#fb923c"/>
+    </marker>
+    <marker id="arrow-emerald" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#34d399"/>
+    </marker>
+    <marker id="arrow-rose" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#fb7185"/>
+    </marker>
+    <marker id="arrow-violet" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,3 L0,6 Z" fill="#a78bfa"/>
+    </marker>
+    <!-- Zone labels -->
+    <style>
+      .zone-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+      .comp-title { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+      .comp-sub { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 400; }
+      .comp-port { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 400; }
+      .flow-label { font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 400; }
+      .topic-label { font-family: 'JetBrains Mono', monospace; font-size: 7.5px; font-weight: 400; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1000" fill="#020617"/>
+  <rect width="1600" height="1000" fill="url(#grid)"/>
+
+  <!-- ==================== ZONE 1: DATA SOURCES (Left, amber) ==================== -->
+  <rect x="20" y="40" width="280" height="520" rx="12" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="30" y="30" class="zone-label" fill="#fbbf24" opacity="0.8">ZONE 1 — DATA SOURCES</text>
+
+  <!-- Wazuh Agents -->
+  <rect x="40" y="65" width="240" height="65" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="50" y="85" class="comp-title" fill="#fbbf24">🖥️ Wazuh Agents</text>
+  <text x="50" y="100" class="comp-sub" fill="#94a3b8">Servers, Network, DBs</text>
+  <text x="50" y="115" class="comp-port" fill="#64748b">Agent-based collection • All endpoints</text>
+
+  <!-- Syslog Sources -->
+  <rect x="40" y="145" width="240" height="65" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="50" y="165" class="comp-title" fill="#fbbf24">📡 Syslog Sources</text>
+  <text x="50" y="180" class="comp-sub" fill="#94a3b8">Firewalls, Routers</text>
+  <text x="50" y="195" class="comp-port" fill="#64748b">Syslog/TCP/UDP • Forwarded</text>
+
+  <!-- API Sources -->
+  <rect x="40" y="225" width="240" height="65" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="50" y="245" class="comp-title" fill="#fbbf24">🔌 API Sources</text>
+  <text x="50" y="260" class="comp-sub" fill="#94a3b8">BMS, EPMS, NMS</text>
+  <text x="50" y="275" class="comp-port" fill="#64748b">REST/GraphQL • Polling</text>
+
+  <!-- Cloud Sources -->
+  <rect x="40" y="305" width="240" height="65" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="50" y="325" class="comp-title" fill="#fbbf24">☁️ Cloud Sources</text>
+  <text x="50" y="340" class="comp-sub" fill="#94a3b8">AWS, Azure, GCP</text>
+  <text x="50" y="355" class="comp-port" fill="#64748b">CloudWatch, Azure Monitor, GCP Logs</text>
+
+  <!-- Data Source aggregation box -->
+  <rect x="40" y="400" width="240" height="55" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="50" y="422" class="comp-title" fill="#fbbf24">📊 Data Volume</text>
+  <text x="50" y="438" class="comp-sub" fill="#94a3b8">All sources → Wazuh Manager via TCP:1514</text>
+
+  <!-- ==================== ZONE 2: SIEM CORE (Center, emerald) ==================== -->
+  <rect x="330" y="40" width="360" height="520" rx="12" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="340" y="30" class="zone-label" fill="#34d399" opacity="0.8">ZONE 2 — SIEM CORE</text>
+
+  <!-- Wazuh Manager -->
+  <rect x="350" y="65" width="320" height="65" rx="8" fill="#111827" stroke="#34d399" stroke-width="1"/>
+  <text x="360" y="85" class="comp-title" fill="#34d399">🛡️ Wazuh Manager</text>
+  <text x="360" y="100" class="comp-sub" fill="#94a3b8">3 nodes • Cluster mode</text>
+  <text x="360" y="115" class="comp-port" fill="#64748b">:1514 (Agent) • :55000 (API) • :9090 (Stats)</text>
+
+  <!-- Elasticsearch -->
+  <rect x="350" y="145" width="320" height="65" rx="8" fill="#111827" stroke="#34d399" stroke-width="1"/>
+  <text x="360" y="165" class="comp-title" fill="#34d399">🔍 Elasticsearch 8.x</text>
+  <text x="360" y="180" class="comp-sub" fill="#94a3b8">3 nodes • Hot/Warm/Cold ILM</text>
+  <text x="360" y="195" class="comp-port" fill="#64748b">:9200 (API) • :9300 (Transport) • Security ON</text>
+
+  <!-- Kibana -->
+  <rect x="350" y="225" width="320" height="65" rx="8" fill="#111827" stroke="#34d399" stroke-width="1"/>
+  <text x="360" y="245" class="comp-title" fill="#34d399">📊 Kibana</text>
+  <text x="360" y="260" class="comp-sub" fill="#94a3b8">Dashboard &amp; Visualization</text>
+  <text x="360" y="275" class="comp-port" fill="#64748b">:5601 • SOC Dashboards • Detection Views</text>
+
+  <!-- NiFi -->
+  <rect x="350" y="305" width="320" height="65" rx="8" fill="#111827" stroke="#34d399" stroke-width="1"/>
+  <text x="360" y="325" class="comp-title" fill="#34d399">⚙️ Apache NiFi</text>
+  <text x="360" y="340" class="comp-sub" fill="#94a3b8">Data Flow Processor</text>
+  <text x="360" y="355" class="comp-port" fill="#64748b">:8080 (HTTP) • :8443 (HTTPS) • Flow Controller</text>
+
+  <!-- Detection Rules -->
+  <rect x="350" y="385" width="320" height="65" rx="8" fill="#111827" stroke="#34d399" stroke-width="1"/>
+  <text x="360" y="405" class="comp-title" fill="#34d399">🎯 Detection Rules</text>
+  <text x="360" y="420" class="comp-sub" fill="#94a3b8">10+ rules • MITRE ATT&CK mapped</text>
+  <text x="360" y="435" class="comp-port" fill="#64748b">Sigma / Wazuh rules • Custom + Built-in</text>
+
+  <!-- ==================== ZONE 3: MESSAGE BROKER (Center, orange) ==================== -->
+  <rect x="720" y="40" width="280" height="520" rx="12" fill="none" stroke="#fb923c" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="730" y="30" class="zone-label" fill="#fb923c" opacity="0.8">ZONE 3 — MESSAGE BROKER</text>
+
+  <!-- Apache Kafka -->
+  <rect x="740" y="65" width="240" height="70" rx="8" fill="#111827" stroke="#fb923c" stroke-width="1"/>
+  <text x="750" y="85" class="comp-title" fill="#fb923c">🔥 Apache Kafka</text>
+  <text x="750" y="100" class="comp-sub" fill="#94a3b8">3 Brokers • KRaft mode (no ZooKeeper)</text>
+  <text x="750" y="115" class="comp-port" fill="#64748b">:9092 (Plain) • :9093 (SASL) • :9100 (JMX)</text>
+
+  <!-- Topics -->
+  <rect x="740" y="150" width="240" height="160" rx="8" fill="#111827" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="750" y="170" class="comp-title" fill="#fb923c">📋 Topics (5)</text>
+  <line x1="750" y1="178" x2="970" y2="178" stroke="#fb923c" stroke-width="0.5" opacity="0.3"/>
+  <text x="755" y="195" class="topic-label" fill="#fbbf24">1.</text>
+  <text x="765" y="195" class="topic-label" fill="#e2e8f0">dcim.siem.events</text>
+  <text x="755" y="215" class="topic-label" fill="#fbbf24">2.</text>
+  <text x="765" y="215" class="topic-label" fill="#e2e8f0">dcim.siem.alerts</text>
+  <text x="755" y="235" class="topic-label" fill="#fbbf24">3.</text>
+  <text x="765" y="235" class="topic-label" fill="#e2e8f0">dcim.siem.cases</text>
+  <text x="755" y="255" class="topic-label" fill="#fbbf24">4.</text>
+  <text x="765" y="255" class="topic-label" fill="#e2e8f0">dcim.siem.actions</text>
+  <text x="755" y="275" class="topic-label" fill="#fbbf24">5.</text>
+  <text x="765" y="275" class="topic-label" fill="#e2e8f0">dcim.siem.enrichment</text>
+
+  <!-- ElastAlert -->
+  <rect x="740" y="325" width="240" height="60" rx="8" fill="#111827" stroke="#fb923c" stroke-width="1"/>
+  <text x="750" y="345" class="comp-title" fill="#fb923c">⚡ ElastAlert</text>
+  <text x="750" y="360" class="comp-sub" fill="#94a3b8">Consumer • Alert Manager</text>
+  <text x="750" y="373" class="comp-port" fill="#64748b">Kafka consumer → Webhook to TraceCat</text>
+
+  <!-- Kafka Cluster Status -->
+  <rect x="740" y="400" width="240" height="55" rx="8" fill="#111827" stroke="#fb923c" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="750" y="420" class="comp-title" fill="#fb923c">🔄 Cluster Status</text>
+  <text x="750" y="438" class="comp-sub" fill="#94a3b8">3 replicas • Replication factor: 3</text>
+
+  <!-- ==================== ZONE 4: SOAR PLATFORM (Right, rose) ==================== -->
+  <rect x="1030" y="40" width="280" height="520" rx="12" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="1040" y="30" class="zone-label" fill="#fb7185" opacity="0.8">ZONE 4 — SOAR PLATFORM</text>
+
+  <!-- TraceCat -->
+  <rect x="1050" y="65" width="240" height="70" rx="8" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="1060" y="85" class="comp-title" fill="#fb7185">🔥 TraceCat</text>
+  <text x="1060" y="100" class="comp-sub" fill="#94a3b8">SOAR + Temporal built-in</text>
+  <text x="1060" y="115" class="comp-port" fill="#64748b">:443 (HTTPS) • :8080 (API) • Workflow Engine</text>
+
+  <!-- DFIR-IRIS -->
+  <rect x="1050" y="150" width="240" height="60" rx="8" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="1060" y="170" class="comp-title" fill="#fb7185">📁 DFIR-IRIS</text>
+  <text x="1060" y="185" class="comp-sub" fill="#94a3b8">Case Management</text>
+  <text x="1060" y="200" class="comp-port" fill="#64748b">:4443 (HTTPS) • Evidence Tracking</text>
+
+  <!-- AI Agent -->
+  <rect x="1050" y="225" width="240" height="65" rx="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="1060" y="245" class="comp-title" fill="#fbbf24">🤖 AI Agent</text>
+  <text x="1060" y="260" class="comp-sub" fill="#94a3b8">Gemma/Unsloth • Local LLM</text>
+  <text x="1060" y="275" class="comp-port" fill="#64748b">On-premise • Air-gapped inference</text>
+
+  <!-- Playbooks -->
+  <rect x="1050" y="305" width="240" height="65" rx="8" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="1060" y="325" class="comp-title" fill="#fb7185">📋 Playbooks</text>
+  <text x="1060" y="340" class="comp-sub" fill="#94a3b8">8 standard • YAML • OT-Safe</text>
+  <text x="1060" y="355" class="comp-port" fill="#64748b">Enrichment • Triage • Containment</text>
+
+  <!-- ==================== ZONE 5: ENRICHMENT (Bottom Right, amber) ==================== -->
+  <rect x="1030" y="580" width="280" height="160" rx="12" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="1040" y="570" class="zone-label" fill="#fbbf24" opacity="0.8">ZONE 5 — ENRICHMENT</text>
+
+  <rect x="1050" y="600" width="110" height="50" rx="6" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="1060" y="618" class="comp-sub" fill="#fbbf24">AbuseIPDB</text>
+  <text x="1060" y="632" class="comp-port" fill="#64748b">IP Reputation</text>
+
+  <rect x="1170" y="600" width="110" height="50" rx="6" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="1180" y="618" class="comp-sub" fill="#fbbf24">VirusTotal</text>
+  <text x="1180" y="632" class="comp-port" fill="#64748b">Hash Scanning</text>
+
+  <rect x="1050" y="660" width="110" height="50" rx="6" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="1060" y="678" class="comp-sub" fill="#fbbf24">iTop CMDB</text>
+  <text x="1060" y="692" class="comp-port" fill="#64748b">Asset Context</text>
+
+  <rect x="1170" y="660" width="110" height="50" rx="6" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+  <text x="1180" y="678" class="comp-sub" fill="#fbbf24">GeoIP</text>
+  <text x="1180" y="692" class="comp-port" fill="#64748b">Location Intel</text>
+
+  <!-- ==================== ZONE 6: SECURITY & AUTH (Bottom Center, rose) ==================== -->
+  <rect x="370" y="580" width="330" height="160" rx="12" fill="none" stroke="#fb7185" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="380" y="570" class="zone-label" fill="#fb7185" opacity="0.8">ZONE 6 — SECURITY &amp; AUTH</text>
+
+  <rect x="390" y="600" width="290" height="50" rx="6" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="400" y="618" class="comp-title" fill="#fb7185">🔐 Authentik</text>
+  <text x="530" y="618" class="comp-sub" fill="#94a3b8">OIDC/SSO</text>
+  <text x="400" y="632" class="comp-port" fill="#64748b">:9443 (HTTPS) • Identity Provider</text>
+
+  <rect x="390" y="660" width="90" height="40" rx="6" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="400" y="680" class="comp-sub" fill="#fb7185">RBAC</text>
+  <text x="400" y="692" class="comp-port" fill="#64748b">5 roles</text>
+
+  <rect x="490" y="660" width="90" height="40" rx="6" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="500" y="680" class="comp-sub" fill="#fb7185">TLS 1.2+</text>
+  <text x="500" y="692" class="comp-port" fill="#64748b">mTLS</text>
+
+  <rect x="590" y="660" width="90" height="40" rx="6" fill="#111827" stroke="#fb7185" stroke-width="1"/>
+  <text x="600" y="680" class="comp-sub" fill="#fb7185">Audit Trail</text>
+  <text x="600" y="692" class="comp-port" fill="#64748b">Full logging</text>
+
+  <!-- ==================== ZONE 7: MONITORING (Bottom, violet) ==================== -->
+  <rect x="730" y="580" width="280" height="160" rx="12" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="8,4" opacity="0.6"/>
+  <text x="740" y="570" class="zone-label" fill="#a78bfa" opacity="0.8">ZONE 7 — MONITORING</text>
+
+  <rect x="750" y="600" width="240" height="50" rx="6" fill="#111827" stroke="#a78bfa" stroke-width="1"/>
+  <text x="760" y="618" class="comp-title" fill="#a78bfa">📡 Prometheus + Grafana</text>
+  <text x="760" y="632" class="comp-port" fill="#64748b">:9090 (Prom) • :3000 (Grafana)</text>
+
+  <rect x="750" y="660" width="115" height="40" rx="6" fill="#111827" stroke="#a78bfa" stroke-width="1"/>
+  <text x="760" y="680" class="comp-sub" fill="#a78bfa">Alert Rules</text>
+  <text x="760" y="692" class="comp-port" fill="#64748b">incl. Kafka</text>
+
+  <rect x="875" y="660" width="115" height="40" rx="6" fill="#111827" stroke="#a78bfa" stroke-width="1"/>
+  <text x="885" y="680" class="comp-sub" fill="#a78bfa">SOC Metrics</text>
+  <text x="885" y="692" class="comp-port" fill="#64748b">Dashboard</text>
+
+  <!-- ==================== DATA FLOW ARROWS ==================== -->
+
+  <!-- Sources → Wazuh Manager -->
+  <line x1="280" y1="428" x2="350" y2="97" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)" opacity="0.7"/>
+  <text x="295" y="255" class="flow-label" fill="#fbbf24" transform="rotate(-70, 295, 255)">TCP:1514</text>
+
+  <!-- Wazuh Manager → Kafka (dcim.siem.events) -->
+  <line x1="670" y1="97" x2="740" y2="97" stroke="#fb923c" stroke-width="2" marker-end="url(#arrow-orange)" opacity="0.8"/>
+  <text x="680" y="90" class="flow-label" fill="#fb923c">dcim.siem.events</text>
+
+  <!-- Kafka → Elasticsearch -->
+  <line x1="740" y1="120" x2="690" y2="178" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)" opacity="0.7"/>
+  <text x="698" y="145" class="flow-label" fill="#fb923c">index</text>
+
+  <!-- Kafka → ElastAlert -->
+  <line x1="740" y1="355" x2="740" y2="340" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)" opacity="0.7"/>
+
+  <!-- Kafka → NiFi -->
+  <line x1="740" y1="200" x2="690" y2="338" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)" opacity="0.7"/>
+  <text x="698" y="270" class="flow-label" fill="#fb923c">enrichment</text>
+
+  <!-- ElastAlert → TraceCat -->
+  <line x1="980" y1="355" x2="1050" y2="110" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)" opacity="0.7"/>
+  <text x="990" y="230" class="flow-label" fill="#fb7185">webhook</text>
+
+  <!-- TraceCat → DFIR-IRIS -->
+  <line x1="1170" y1="135" x2="1170" y2="150" stroke="#fb7185" stroke-width="1.5" marker-end="url(#arrow-rose)" opacity="0.7"/>
+  <text x="1175" y="148" class="flow-label" fill="#fb7185">cases</text>
+
+  <!-- TraceCat → Enrichment -->
+  <line x1="1050" y1="400" x2="1050" y2="580" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)" opacity="0.7"/>
+  <text x="1055" y="490" class="flow-label" fill="#fbbf24">enrich</text>
+
+  <!-- Prometheus scraping endpoints -->
+  <line x1="730" y1="625" x2="690" y2="100" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>
+  <line x1="730" y1="625" x2="980" y2="350" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>
+  <line x1="730" y1="625" x2="500" y2="100" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>
+  <text x="620" y="635" class="flow-label" fill="#a78bfa" opacity="0.5">scrape :metrics</text>
+
+  <!-- Auth flows -->
+  <line x1="540" y1="580" x2="540" y2="440" stroke="#fb7185" stroke-width="1" stroke-dasharray="4,3" opacity="0.4"/>
+  <text x="545" y="520" class="flow-label" fill="#fb7185" opacity="0.5">OIDC</text>
+
+  <!-- ==================== LEGEND ==================== -->
+  <rect x="20" y="760" width="1560" height="55" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1"/>
+  <text x="40" y="780" class="comp-title" fill="#64748b">LEGEND:</text>
+  <circle cx="120" cy="777" r="5" fill="#fbbf24" opacity="0.7"/><text x="130" y="780" class="comp-sub" fill="#fbbf24">Data Sources / AI / Enrichment</text>
+  <circle cx="290" cy="777" r="5" fill="#34d399" opacity="0.7"/><text x="300" y="780" class="comp-sub" fill="#34d399">SIEM Core (Processing)</text>
+  <circle cx="440" cy="777" r="5" fill="#fb923c" opacity="0.7"/><text x="450" y="780" class="comp-sub" fill="#fb923c">Message Bus (Kafka)</text>
+  <circle cx="590" cy="777" r="5" fill="#fb7185" opacity="0.7"/><text x="600" y="780" class="comp-sub" fill="#fb7185">Security / SOAR</text>
+  <circle cx="740" cy="777" r="5" fill="#22d3ee" opacity="0.7"/><text x="750" y="780" class="comp-sub" fill="#22d3ee">Frontend / Dashboard</text>
+  <circle cx="900" cy="777" r="5" fill="#a78bfa" opacity="0.7"/><text x="910" y="780" class="comp-sub" fill="#a78bfa">Monitoring</text>
+  <line x1="40" y1="797" x2="70" y2="797" stroke="#fb923c" stroke-width="1.5" marker-end="url(#arrow-orange)"/><text x="80" y="800" class="comp-sub" fill="#94a3b8">Data flow</text>
+  <line x1="160" y1="797" x2="190" y2="797" stroke="#a78bfa" stroke-width="1" stroke-dasharray="4,3"/><text x="200" y="800" class="comp-sub" fill="#94a3b8">Monitoring scrape</text>
+
+</svg>
+</div>
+
+<!-- Info Cards -->
+<div class="info-cards">
+  <div class="info-card siem">
+    <h3>1. SIEM Core (LME Stack)</h3>
+    <p>Wazuh Manager (3-node cluster) → Elasticsearch 8.x (hot/warm/cold) → Kibana dashboards. NiFi for data flow processing. 10+ detection rules mapped to MITRE ATT&CK. Log collection on port 1514, API on 55000.</p>
+  </div>
+  <div class="info-card kafka">
+    <h3>2. Message Broker</h3>
+    <p>Apache Kafka 3.x with 5 topics: events, alerts, cases, actions, enrichment. KRaft mode (no ZooKeeper). 3-broker cluster with replication factor 3. Central event bus for all SIEM/SOAR traffic.</p>
+  </div>
+  <div class="info-card soar">
+    <h3>3. SOAR Platform</h3>
+    <p>TraceCat with built-in Temporal workflow engine. DFIR-IRIS case management with evidence tracking. Gemma/Unsloth local LLM for AI analysis. 8 standard YAML playbooks, OT-safe.</p>
+  </div>
+  <div class="info-card security">
+    <h3>4. Security & Auth</h3>
+    <p>Authentik OIDC/SSO on :9443. 5 RBAC roles (Admin, SOC L1/L2/L3, Auditor). TLS 1.2+ with mTLS. Full audit trail across all services.</p>
+  </div>
+  <div class="info-card monitor">
+    <h3>5. Monitoring</h3>
+    <p>Prometheus (:9090) + Grafana (:3000). Alert rules covering Kafka lag, ES cluster health, Wazuh agent status. SOC metrics dashboard for incident response KPIs.</p>
+  </div>
+  <div class="info-card enrich">
+    <h3>6. Enrichment</h3>
+    <p>AbuseIPDB for IP reputation. VirusTotal for hash/file scanning. iTop CMDB for asset context. GeoIP for location intelligence. All integrated via TraceCat playbooks.</p>
+  </div>
+</div>
+
+<div class="footer">
+  DCIM SIEM/SOAR Deployment Architecture &bull; Stack: Wazuh + Kafka + NiFi + ES + TraceCat + DFIR-IRIS &bull; 2026-06-30
+</div>
+</body>
+</html>

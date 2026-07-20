@@ -2,12 +2,18 @@
 
 > Chronological record of all wiki actions. Append-only.
 > Format: `## [YYYY-MM-DD] action | subject`
+<<<<<<< Updated upstream
+5|> Actions: ingest, update, query, lint, create, archive, delete
+- 2026-07-15 | update | Index rebuild — 13 missing files added (1 concept, 3 comparisons, 2 reference designs, 4 tech reqs, 3 plans). Section counts corrected: Comparisons 37→44, Tech Req 16→36, Plans 2→5. Total pages: 148+18+36+5. | Hermes
+- 2026-07-14 | create | Data Ingestion Pipeline Repo Alignment — DCIM_SRV_DATA_COLLECTION vs Block 2 Ref Design: 69% overall, 60 FRs mapped (42% ✅, 37% ⚠️, 22% ❌). P1 gaps: validation processor, SIEM consumer, Prometheus metrics. Kafka 3-node (RF=3, SSL) exceeds ref. DLQ 3-topic better than ref. Lineage OK. ITSM/ERP connectors missing. 26KB | Hermes
+=======
 
 ## [2026-07-13] update | Synchronize wiki inventory and project integration
 - README inventory refreshed: 163 wiki pages, 16 reference designs, 17 diagrams, 34 technical requirements, and 2 plans.
 - Repository link updated to the integrated `duniamaya98/dcim_project` location.
 - Documentation status aligned with Analytics & AI deployment and empirical 23-capability model testing.
 > Actions: ingest, update, query, lint, create, archive, delete
+>>>>>>> Stashed changes
 - 2026-06-25 | create | Analytics & AI Engine SLA & Prioritization Framework FINAL — 20 sections, 26 UCs, 5 SLA tiers, 15 DQ rules, 11 Prometheus alerts, 6 business KPIs, RACI governance, 5 decision records, glossary. FIT041 merged (7 governance items absorbed, 12 metrics reconciled, 0 conflicts). 41.5KB | Hermes
 - 2026-06-25 | create | Asset Repository SLA & Prioritization Framework FINAL — 17 sections, 15 UCs, 10 DQ rules, 5 business KPIs, RACI governance, FIT041 100% absorbed, 0 conflicts, 32KB | Hermes
 - 2026-06-25 | create | FIT041 SLA & Prioritization Asset Repository vs DCIM-Wiki Komparasi — 20 aspects, COMPLEMENTARY status, 14 FIT041-unique governance items, 0 conflicts, dual-layer model (business + technical), 27KB | Hermes
@@ -83,9 +89,11 @@
 
 ## [2026-06-23] create | Reference Design — Block 2 Data Ingestion & Integration
 - File: `reference-designs/block2-data-ingestion-integration.md` (~52KB, 16 sections)
-- Covers: Event schema (JSON Schema), 10 Kafka topics, 5 NiFi flows, validation processor, enrichment processor, DLQ handling, lineage tracking, ITSM/ERP/DMS connectors
-- Includes: Data quality framework, error handling strategy, performance sizing, security controls, monitoring/alerting
-- Purpose: Reference for team comparison → gap identification → connection dots
+
+## [2026-07-06] create | Product Description — DCIM Core Platform
+- File: `product-description/dcim-core-platform-product-description.md`
+- Covers: product description, detailed specs, concrete features, functional/non-functional, hardware requirements, installation setup, roadmap.
+- Sources: DCIM-Wiki repo + FIT041 source documents.
 
 ## [2026-06-23] create | Architecture Diagram — Block 2 Data Ingestion
 - File: `reference-designs/diagrams/block2-data-ingestion-architecture.html` (~33KB)
@@ -93,8 +101,6 @@
 - Shows: 5 zones (Source Systems, NiFi Ingestion, Kafka Pipeline, Target Stores, Lineage)
 - Includes: 5 NiFi flow pipelines, validation → enrichment → routing flow, DLQ, 5 target stores, lineage tracking
 - 6 info cards: Kafka Pipeline, NiFi Flows, Validation & DLQ, Enrichment, Data Lineage, Connectors & Security
-
-## [2026-06-23] create | Reference Design — Block 3 Asset Repository
 - File: `reference-designs/block3-asset-repository.md` (~48KB, 14 sections)
 - Covers: Asset data model (4 tables), PostgreSQL schema DDL, CRUD API, bulk import (CSV/JSON), reconciliation engine, audit trail, enrichment API with Redis cache
 - Includes: Data quality framework, performance targets, security (RBAC), monitoring/alerting
@@ -457,3 +463,48 @@
 - 2026-06-25 | create | FIT041 SLA & Prioritization SIEM vs DCIM-Wiki Komparasi — 25 aspects, 17 gaps (4×P1, 7×P2, 6×P3), ~65% alignment, COMPLEMENTARY. FIT041=99.9% uptime, 15K EPS, 90d hot, regulatory elevator. DCIM-Wiki=Kafka, OT-safe, consumer SLA, Prometheus. Terminology: MTTD/MTTA/MTTC/MTTR | Hermes
 - 2026-06-25 | create | SIEM SOAR SLA & Prioritization Framework FINAL (v2.0) — 17 sections, 20 UCs, 5-metric SOC model, regulatory elevator, hybrid retention, phased EPS, 99.9% uptime, RACI, reporting, governance, 21 acceptance criteria, 714 lines, 35KB. Merged FIT041 + DCIM-Wiki | Hermes
 - 2026-06-26 | create | SIEM/SOAR User Acceptance Criteria (UAC) — 16 core + 7 supplementary = 23 criteria. Baseline: Actual Architecture §11 (LME + Tracecat + DFIR-IRIS). 9 kategori, test methods, evidence, sign-off table, known limitations. | Hermes
+- 2026-06-29 | create | MT-DECOM n8n Server Decommissioning Workflow — Goal Prompt. Custom scenario (Docker/DevOps). Baseline: Block 8 §2/§4/§5/§8/§9 + FIT041 UC2. 10 acceptance items, 10 stop-if guards, 120K token budget. Multi-step: request → approval → VM shutdown → export → delete → CMDB sync → financial update → cleanup → physical removal. Hyper-V PowerShell remoting. | Hermes
+
+- **2026-06-30** | [[deployment-implementation-guide]] | Comprehensive deployment & implementation guide (36KB + diagram). 8 phases (A-H), 20 acceptance criteria, rollback procedures, troubleshooting. Based on actual architecture + reference design.
+
+## 2026-07-01 — v4.3 Pipeline Architecture Komparasi
+
+- **Document:** `comparisons/v4.3-pipeline-architecture-komparasi.md`
+- **Type:** Comparison (v4.3 vs DCIM-Wiki)
+- **Source:** v4.3-pipeline-architecture.md (2026-07-01)
+- **Finds:** MAJOR LEAP — 85% alignment (up from 60% in v4.2), P1 100% resolved, 5 remaining gaps (P2-P3)
+- **Key Changes v4.2→v4.3:** Kafka HA, TLS, Vault, Avro+Schema Registry, Event Lineage (L14), Infra Monitoring (L15), Data Quality (L16)
+- **v4.3 EXCEEDS DCIM-Wiki in:** Event Lineage, Data Quality, Infra Monitoring, SQL Local Enrichment, Avro Serialization
+- **Remaining Gaps:** Prometheus+Grafana (P2), SIEM Integration (P2), RBAC (P3), Circuit Breaker (P3), Data Classification (P3)
+- **Status:** ✅ Generated
+
+## 2026-07-01 — v4.4 Pipeline Architecture Komparasi
+
+- **Document:** `comparisons/v4.4-pipeline-architecture-komparasi.md`
+- **Type:** Comparison (v4.4 vs DCIM-Wiki)
+- **Source:** v4.4-pipeline-architecture.md (2026-07-01)
+- **Finds:** 95% alignment (up from 85% in v4.3), NiFi Cutover complete, 100% collection via NiFi
+- **Key Change:** L2 Collection Cutover — all polling (Server, UPS, NAS, Network, CCTV) via NiFi
+- **Telegraf Status:** Deactivated for DCIM collection (only system metrics + infra monitoring)
+- **New Component:** TimescaleDB for AI training data
+- **Remaining Gaps:** 5 items (P2-P3 level, same as v4.3)
+- **Status:** ✅ Generated
+
+## 2026-07-13 — n8n-Workflows Repo Alignment
+
+- **Document:** `technical-requirements/n8n-workflows-repo-alignment.md`
+- **Type:** Comparison (Repo Implementation vs DCIM-Wiki Reference Design)
+- **Source:** https://github.com/ledaf78/n8n-workflows.git + Block 8 + UC Analysis v2 + SLA Framework
+- **Finds:** ~12% coverage (2/17 UCs fully covered), 0 conflicts, 16 gaps (3×P1, 5×P2, 5×P3, 3×P4)
+- **Key Finding:** Repo implements Automated Incident Remediation (Service Restart) with AI-powered log analysis — goes beyond Block 8 scope. Server-Decommissioning directory is empty.
+- **Status:** ✅ Generated
+
+## 2026-07-13 — SOAR Repo Alignment
+
+- **Document:** `comparisons/soar-repo-alignment.md`
+- **Type:** Comparison (Repo Implementation vs DCIM-Wiki Reference Design)
+- **Source:** https://github.com/madicemerlang/SOAR.git + reference-designs/siem-soar.md + actual-architecture
+- **Finds:** ~25% alignment vs reference design, ~60% vs actual architecture. 8 n8n nodes, 3 integrations (VT, AlienVault, DFIR IRIS). 24 gaps (8 P1, 8 P2, 8 P3). 0 conflicts.
+- **Key Finding:** Valid SOAR MVP — alert → enrichment → LLM analysis → case creation works. Main gaps: no TLS, hardcoded IPs, no RBAC, no OT-Safe, no Kafka, no audit trail. Recommends hybrid phased hardening approach.
+- **Method:** MCP Sequential Thinking (4 steps) + repo code analysis
+- **Status:** ✅ Generated

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Decommissioning Workflow — Architecture Diagram</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: #020617;
+      min-height: 100vh;
+      padding: 2rem;
+      color: white;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .header { margin-bottom: 2rem; }
+    .header-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .pulse-dot { width: 12px; height: 12px; background: #22d3ee; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; }
+    .subtitle { color: #94a3b8; font-size: 0.875rem; margin-left: 1.75rem; }
+    .diagram-container {
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 1rem;
+      border: 1px solid #1e293b;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+    svg { width: 100%; min-width: 1200px; display: block; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-top: 2rem; }
+    .card { background: rgba(15, 23, 42, 0.5); border-radius: 0.75rem; border: 1px solid #1e293b; padding: 1.25rem; }
+    .card-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .card-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .card-dot.cyan { background: #22d3ee; }
+    .card-dot.emerald { background: #34d399; }
+    .card-dot.violet { background: #a78bfa; }
+    .card-dot.amber { background: #fbbf24; }
+    .card-dot.rose { background: #fb7185; }
+    .card-dot.orange { background: #fb923c; }
+    .card h3 { font-size: 0.875rem; font-weight: 600; }
+    .card ul { list-style: none; color: #94a3b8; font-size: 0.75rem; }
+    .card li { margin-bottom: 0.375rem; }
+    .footer { text-align: center; margin-top: 1.5rem; color: #475569; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-row">
+        <div class="pulse-dot"></div>
+        <h1>Server Decommissioning Workflow — Architecture</h1>
+      </div>
+      <p class="subtitle">n8n Workflow Automation • Hyper-V PowerShell Remoting • 10-State Machine • -WhatIf Support</p>
+    </div>
+
+    <div class="diagram-container">
+      <svg viewBox="0 0 1200 900">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+          </marker>
+          <marker id="arrow-cyan" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#22d3ee"/>
+          </marker>
+          <marker id="arrow-emerald" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#34d399"/>
+          </marker>
+          <marker id="arrow-amber" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fbbf24"/>
+          </marker>
+          <marker id="arrow-rose" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb7185"/>
+          </marker>
+          <marker id="arrow-violet" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa"/>
+          </marker>
+          <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#fb923c"/>
+          </marker>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+
+        <rect width="100%" height="100%" fill="url(#grid)"/>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 1: TRIGGER LAYER -->
+        <!-- ============================================================ -->
+        <rect x="20" y="15" width="1160" height="90" rx="10" fill="rgba(8, 51, 68, 0.15)" stroke="#22d3ee" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="32" fill="#22d3ee" font-size="9" font-weight="600">TRIGGER LAYER</text>
+
+        <!-- Asset Manager Dashboard -->
+        <rect x="40" y="40" width="140" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="110" y="62" fill="white" font-size="11" font-weight="600" text-anchor="middle">Asset Manager</text>
+        <text x="110" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Dashboard Trigger</text>
+
+        <!-- CMDB Status Update -->
+        <rect x="200" y="40" width="140" height="55" rx="6" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="270" y="62" fill="white" font-size="11" font-weight="600" text-anchor="middle">CMDB Event</text>
+        <text x="270" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Status: Scheduled</text>
+
+        <!-- n8n Webhook -->
+        <rect x="360" y="40" width="140" height="55" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="430" y="62" fill="white" font-size="11" font-weight="600" text-anchor="middle">n8n Webhook</text>
+        <text x="430" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">POST /webhook/decommission</text>
+
+        <!-- Arrows: Trigger → Webhook -->
+        <line x1="180" y1="67" x2="358" y2="67" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+        <line x1="340" y1="67" x2="358" y2="67" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+        <!-- Validate Node -->
+        <rect x="520" y="40" width="120" height="55" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="580" y="62" fill="white" font-size="11" font-weight="600" text-anchor="middle">Validate</text>
+        <text x="580" y="78" fill="#94a3b8" font-size="8" text-anchor="middle">Asset exists?</text>
+
+        <line x1="500" y1="67" x2="518" y2="67" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 2: WORKFLOW ORCHESTRATION (n8n) -->
+        <!-- ============================================================ -->
+        <rect x="20" y="120" width="1160" height="130" rx="10" fill="rgba(6, 78, 59, 0.1)" stroke="#34d399" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="137" fill="#34d399" font-size="9" font-weight="600">WORKFLOW ORCHESTRATION — n8n</text>
+
+        <!-- State Machine Visualization -->
+        <rect x="40" y="148" width="700" height="90" rx="8" fill="rgba(6, 78, 59, 0.2)" stroke="#34d399" stroke-width="1"/>
+        <text x="55" y="163" fill="#34d399" font-size="9" font-weight="600">10-STATE WORKFLOW STATE MACHINE</text>
+
+        <!-- State boxes -->
+        <rect x="50" y="172" width="75" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="87" y="190" fill="white" font-size="8" text-anchor="middle">Pending</text>
+
+        <rect x="135" y="172" width="80" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="175" y="190" fill="white" font-size="8" text-anchor="middle">In Progress</text>
+
+        <rect x="225" y="172" width="95" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="272" y="190" fill="white" font-size="8" text-anchor="middle">Waiting Approve</text>
+
+        <rect x="330" y="172" width="75" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#34d399" stroke-width="1"/>
+        <text x="367" y="190" fill="white" font-size="8" text-anchor="middle">Approved</text>
+
+        <rect x="415" y="172" width="80" height="28" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="455" y="190" fill="white" font-size="8" text-anchor="middle">Executing</text>
+
+        <rect x="505" y="172" width="80" height="28" rx="4" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="545" y="190" fill="#34d399" font-size="8" text-anchor="middle">✓ Completed</text>
+
+        <rect x="595" y="172" width="65" height="28" rx="4" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="627" y="190" fill="#fb7185" font-size="8" text-anchor="middle">✗ Failed</text>
+
+        <rect x="670" y="172" width="65" height="28" rx="4" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="702" y="190" fill="white" font-size="8" text-anchor="middle">Rollback</text>
+
+        <!-- State arrows -->
+        <line x1="125" y1="186" x2="133" y2="186" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="215" y1="186" x2="223" y2="186" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="320" y1="186" x2="328" y2="186" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="405" y1="186" x2="413" y2="186" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow)"/>
+        <line x1="495" y1="186" x2="503" y2="186" stroke="#94a3b8" stroke-width="1" marker-end="url(#arrow)"/>
+
+        <!-- Additional states row 2 -->
+        <rect x="50" y="208" width="65" height="22" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#fb7185" stroke-width="1"/>
+        <text x="82" y="223" fill="white" font-size="7" text-anchor="middle">Rejected</text>
+
+        <rect x="125" y="208" width="70" height="22" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="160" y="223" fill="white" font-size="7" text-anchor="middle">Escalated</text>
+
+        <rect x="205" y="208" width="65" height="22" rx="4" fill="rgba(30, 41, 59, 0.6)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="237" y="223" fill="white" font-size="7" text-anchor="middle">Cancelled</text>
+
+        <!-- n8n Engine Box -->
+        <rect x="760" y="148" width="200" height="90" rx="8" fill="rgba(6, 78, 59, 0.3)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="860" y="168" fill="white" font-size="11" font-weight="600" text-anchor="middle">n8n Engine</text>
+        <text x="860" y="184" fill="#94a3b8" font-size="8" text-anchor="middle">• Visual Workflow Designer</text>
+        <text x="860" y="196" fill="#94a3b8" font-size="8" text-anchor="middle">• HTTP Request Nodes</text>
+        <text x="860" y="208" fill="#94a3b8" font-size="8" text-anchor="middle">• Webhook Triggers</text>
+        <text x="860" y="220" fill="#94a3b8" font-size="8" text-anchor="middle">• Error Handling Workflows</text>
+
+        <!-- Connection: Validate → State Machine -->
+        <line x1="580" y1="95" x2="580" y2="146" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+        <text x="590" y="125" fill="#fbbf24" font-size="7">Valid</text>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 3: APPROVAL CHAIN -->
+        <!-- ============================================================ -->
+        <rect x="20" y="265" width="380" height="200" rx="10" fill="rgba(251, 191, 36, 0.08)" stroke="#fbbf24" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="282" fill="#fbbf24" font-size="9" font-weight="600">APPROVAL CHAIN — UC8 Multi-Level</text>
+
+        <!-- Level 1 -->
+        <rect x="40" y="295" width="160" height="50" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="120" y="315" fill="white" font-size="10" font-weight="600" text-anchor="middle">Level 1: Team Lead</text>
+        <text x="120" y="330" fill="#94a3b8" font-size="8" text-anchor="middle">Timeout: 2h</text>
+
+        <!-- Level 2 -->
+        <rect x="210" y="295" width="170" height="50" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="295" y="315" fill="white" font-size="10" font-weight="600" text-anchor="middle">Level 2: Change Mgr</text>
+        <text x="295" y="330" fill="#94a3b8" font-size="8" text-anchor="middle">Timeout: 4h</text>
+
+        <!-- Level 3 -->
+        <rect x="120" y="355" width="170" height="50" rx="6" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1.5"/>
+        <text x="205" y="375" fill="white" font-size="10" font-weight="600" text-anchor="middle">Level 3: Director</text>
+        <text x="205" y="390" fill="#94a3b8" font-size="8" text-anchor="middle">Timeout: 24h</text>
+
+        <!-- Approval arrows -->
+        <line x1="200" y1="320" x2="208" y2="320" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+        <line x1="295" y1="345" x2="295" y2="353" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+
+        <!-- Escalation path -->
+        <rect x="310" y="355" width="70" height="50" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="345" y="375" fill="#fb7185" font-size="8" font-weight="600" text-anchor="middle">Escalate</text>
+        <text x="345" y="390" fill="#94a3b8" font-size="7" text-anchor="middle">→ VP</text>
+
+        <!-- Approved State -->
+        <rect x="120" y="415" width="170" height="35" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="205" y="437" fill="#34d399" font-size="10" font-weight="600" text-anchor="middle">✓ Approved → Execute</text>
+
+        <line x1="205" y1="405" x2="205" y2="413" stroke="#34d399" stroke-width="1.5" marker-end="url(#arrow-emerald)"/>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 3: RUNBOOK EXECUTION -->
+        <!-- ============================================================ -->
+        <rect x="415" y="265" width="765" height="200" rx="10" fill="rgba(167, 139, 250, 0.08)" stroke="#a78bfa" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="430" y="282" fill="#a78bfa" font-size="9" font-weight="600">RUNBOOK EXECUTION — UC13 Decommission (7 Steps) • Hyper-V PowerShell Remoting • -WhatIf</text>
+
+        <!-- Step 1: Pre-flight -->
+        <rect x="430" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="480" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 1</text>
+        <text x="480" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Pre-flight</text>
+        <text x="480" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">CMDB Check</text>
+        <text x="480" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Dependency</text>
+
+        <!-- Step 2: Network -->
+        <rect x="540" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="590" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 2</text>
+        <text x="590" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Network</text>
+        <text x="590" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">Firewall Rules</text>
+        <text x="590" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">VLAN / DNS</text>
+
+        <!-- Step 3: Security -->
+        <rect x="650" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="700" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 3</text>
+        <text x="700" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Security</text>
+        <text x="700" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">AD / Certs</text>
+        <text x="700" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Secrets</text>
+
+        <!-- Step 4: CMDB -->
+        <rect x="760" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="810" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 4</text>
+        <text x="810" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">CMDB Update</text>
+        <text x="810" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">Status → Retired</text>
+        <text x="810" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Relationships</text>
+
+        <!-- Step 5: Asset -->
+        <rect x="870" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="920" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 5</text>
+        <text x="920" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Asset Update</text>
+        <text x="920" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">Financial</text>
+        <text x="920" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Warranty</text>
+
+        <!-- Step 6: Financial -->
+        <rect x="980" y="295" width="100" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="1030" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 6</text>
+        <text x="1030" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Financial</text>
+        <text x="1030" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">Depreciation</text>
+        <text x="1030" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Notify Finance</text>
+
+        <!-- Step 7: Physical -->
+        <rect x="1080" y="295" width="90" height="60" rx="6" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="1125" y="312" fill="white" font-size="9" font-weight="600" text-anchor="middle">Step 7</text>
+        <text x="1125" y="325" fill="#a78bfa" font-size="8" text-anchor="middle">Physical</text>
+        <text x="1125" y="338" fill="#94a3b8" font-size="7" text-anchor="middle">Removal</text>
+        <text x="1125" y="348" fill="#94a3b8" font-size="7" text-anchor="middle">Ticket</text>
+
+        <!-- Step arrows -->
+        <line x1="530" y1="325" x2="538" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+        <line x1="640" y1="325" x2="648" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+        <line x1="750" y1="325" x2="758" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+        <line x1="860" y1="325" x2="868" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+        <line x1="970" y1="325" x2="978" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+        <line x1="1080" y1="325" x2="1088" y2="325" stroke="#a78bfa" stroke-width="1" marker-end="url(#arrow-violet)"/>
+
+        <!-- Hyper-V Details -->
+        <rect x="430" y="365" width="750" height="90" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="445" y="380" fill="#94a3b8" font-size="8" font-weight="600">Hyper-V PowerShell Remoting Execution Details:</text>
+        <text x="445" y="395" fill="#94a3b8" font-size="7">• Invoke-Command -ComputerName $VMHost -ScriptBlock { Get-VM -Name $ServerName | Stop-VM -Force }</text>
+        <text x="445" y="408" fill="#94a3b8" font-size="7">• Remove-VM -Name $ServerName -Force | Remove-Item -Path $VHDPath -Force</text>
+        <text x="445" y="421" fill="#94a3b8" font-size="7">• -WhatIf flag: All scripts support -WhatIf for dry-run validation before execution</text>
+        <text x="445" y="434" fill="#94a3b8" font-size="7">• ErrorAction: Stop | Try/Catch with rollback on failure | Audit trail for every operation</text>
+        <text x="445" y="447" fill="#22d3ee" font-size="7">• Connection: WinRM/HTTPS 5985 | Auth: Kerberos/NTLM | Encryption: AES-256</text>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 4: ITSM INTEGRATION -->
+        <!-- ============================================================ -->
+        <rect x="20" y="480" width="350" height="150" rx="10" fill="rgba(251, 146, 60, 0.08)" stroke="#fb923c" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="497" fill="#fb923c" font-size="9" font-weight="600">ITSM INTEGRATION — UC10/UC11/UC12</text>
+
+        <!-- ServiceNow -->
+        <rect x="40" y="510" width="150" height="50" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="115" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">ServiceNow</text>
+        <text x="115" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">REST API • OAuth2</text>
+
+        <!-- Jira -->
+        <rect x="200" y="510" width="150" height="50" rx="6" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1.5"/>
+        <text x="275" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Jira</text>
+        <text x="275" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">REST API • API Key</text>
+
+        <!-- Sync -->
+        <rect x="100" y="570" width="190" height="45" rx="6" fill="rgba(251, 146, 60, 0.2)" stroke="#fb923c" stroke-width="1"/>
+        <text x="195" y="588" fill="white" font-size="9" font-weight="600" text-anchor="middle">Bidirectional Sync</text>
+        <text x="195" y="602" fill="#94a3b8" font-size="7" text-anchor="middle">Status • Assignment • Comments</text>
+
+        <line x1="115" y1="560" x2="115" y2="568" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+        <line x1="275" y1="560" x2="275" y2="568" stroke="#fb923c" stroke-width="1" marker-end="url(#arrow-orange)"/>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 4: EXTERNAL SYSTEMS -->
+        <!-- ============================================================ -->
+        <rect x="385" y="480" width="795" height="150" rx="10" fill="rgba(148, 163, 184, 0.08)" stroke="#94a3b8" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="400" y="497" fill="#94a3b8" font-size="9" font-weight="600">EXTERNAL SYSTEMS</text>
+
+        <!-- CMDB -->
+        <rect x="400" y="510" width="120" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="460" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">CMDB</text>
+        <text x="460" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">CI • Topology</text>
+
+        <!-- Asset Repository -->
+        <rect x="530" y="510" width="120" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="590" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Asset Repo</text>
+        <text x="590" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">Financial • Warranty</text>
+
+        <!-- Financial System -->
+        <rect x="660" y="510" width="120" height="50" rx="6" fill="rgba(76, 29, 149, 0.4)" stroke="#a78bfa" stroke-width="1.5"/>
+        <text x="720" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Financial</text>
+        <text x="720" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">Depreciation</text>
+
+        <!-- Network/Firewall -->
+        <rect x="790" y="510" width="120" height="50" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="850" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Network</text>
+        <text x="850" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">Firewall • VLAN</text>
+
+        <!-- Security/AD -->
+        <rect x="920" y="510" width="120" height="50" rx="6" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1.5"/>
+        <text x="980" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Security</text>
+        <text x="980" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">AD • Certs • Vault</text>
+
+        <!-- Hyper-V Host -->
+        <rect x="1050" y="510" width="120" height="50" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#22d3ee" stroke-width="1.5"/>
+        <text x="1110" y="530" fill="white" font-size="10" font-weight="600" text-anchor="middle">Hyper-V Host</text>
+        <text x="1110" y="545" fill="#94a3b8" font-size="8" text-anchor="middle">PowerShell Remoting</text>
+
+        <!-- Physical DCIM -->
+        <rect x="400" y="570" width="150" height="45" rx="6" fill="rgba(30, 41, 59, 0.5)" stroke="#94a3b8" stroke-width="1"/>
+        <text x="475" y="588" fill="white" font-size="9" font-weight="600" text-anchor="middle">Physical DCIM</text>
+        <text x="475" y="602" fill="#94a3b8" font-size="7" text-anchor="middle">Rack • Power • Removal</text>
+
+        <!-- Vault -->
+        <rect x="560" y="570" width="120" height="45" rx="6" fill="rgba(136, 19, 55, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="620" y="588" fill="white" font-size="9" font-weight="600" text-anchor="middle">HashiCorp Vault</text>
+        <text x="620" y="602" fill="#94a3b8" font-size="7" text-anchor="middle">Secrets • Credentials</text>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 5: NOTIFICATION LAYER -->
+        <!-- ============================================================ -->
+        <rect x="20" y="645" width="500" height="100" rx="10" fill="rgba(251, 113, 133, 0.08)" stroke="#fb7185" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="662" fill="#fb7185" font-size="9" font-weight="600">NOTIFICATION LAYER</text>
+
+        <rect x="40" y="675" width="100" height="55" rx="6" fill="rgba(251, 113, 133, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="90" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Email</text>
+        <text x="90" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">SMTP</text>
+        <text x="90" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">< 5min</text>
+
+        <rect x="150" y="675" width="100" height="55" rx="6" fill="rgba(251, 113, 133, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="200" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Slack</text>
+        <text x="200" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">#dcim-alerts</text>
+        <text x="200" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">< 1min</text>
+
+        <rect x="260" y="675" width="100" height="55" rx="6" fill="rgba(251, 113, 133, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="310" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Teams</text>
+        <text x="310" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">DCIM Channel</text>
+        <text x="310" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">< 1min</text>
+
+        <rect x="370" y="675" width="130" height="55" rx="6" fill="rgba(251, 113, 133, 0.3)" stroke="#fb7185" stroke-width="1"/>
+        <text x="435" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">PagerDuty</text>
+        <text x="435" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">Critical Only</text>
+        <text x="435" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">< 1min</text>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 5: MONITORING & AUDIT -->
+        <!-- ============================================================ -->
+        <rect x="530" y="645" width="650" height="100" rx="10" fill="rgba(40, 53, 128, 0.08)" stroke="#283593" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="545" y="662" fill="#818cf8" font-size="9" font-weight="600">MONITORING & AUDIT</text>
+
+        <rect x="545" y="675" width="130" height="55" rx="6" fill="rgba(40, 53, 128, 0.3)" stroke="#818cf8" stroke-width="1"/>
+        <text x="610" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Prometheus</text>
+        <text x="610" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">Metrics</text>
+        <text x="610" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">workflow_*</text>
+
+        <rect x="685" y="675" width="130" height="55" rx="6" fill="rgba(40, 53, 128, 0.3)" stroke="#818cf8" stroke-width="1"/>
+        <text x="750" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Grafana</text>
+        <text x="750" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">Dashboard</text>
+        <text x="750" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">Real-time</text>
+
+        <rect x="825" y="675" width="130" height="55" rx="6" fill="rgba(40, 53, 128, 0.3)" stroke="#818cf8" stroke-width="1"/>
+        <text x="890" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Audit Trail</text>
+        <text x="890" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">100% Coverage</text>
+        <text x="890" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">State Transitions</text>
+
+        <rect x="965" y="675" width="130" height="55" rx="6" fill="rgba(40, 53, 128, 0.3)" stroke="#818cf8" stroke-width="1"/>
+        <text x="1030" y="695" fill="white" font-size="9" font-weight="600" text-anchor="middle">Elasticsearch</text>
+        <text x="1030" y="710" fill="#94a3b8" font-size="7" text-anchor="middle">Logs</text>
+        <text x="1030" y="720" fill="#94a3b8" font-size="7" text-anchor="middle">Execution Logs</text>
+
+        <!-- ============================================================ -->
+        <!-- LAYER 6: ERROR HANDLING & ROLLBACK -->
+        <!-- ============================================================ -->
+        <rect x="20" y="760" width="1160" height="110" rx="10" fill="rgba(198, 40, 40, 0.08)" stroke="#C62828" stroke-width="1" stroke-dasharray="6,3"/>
+        <text x="35" y="777" fill="#C62828" font-size="9" font-weight="600">ERROR HANDLING & ROLLBACK</text>
+
+        <!-- Error Detection -->
+        <rect x="40" y="790" width="150" height="60" rx="6" fill="rgba(198, 40, 40, 0.3)" stroke="#C62828" stroke-width="1.5"/>
+        <text x="115" y="810" fill="white" font-size="9" font-weight="600" text-anchor="middle">Error Detection</text>
+        <text x="115" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Step Failure • Timeout</text>
+        <text x="115" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">API Error • Validation</text>
+
+        <!-- Rollback Steps -->
+        <rect x="210" y="790" width="130" height="60" rx="6" fill="rgba(198, 40, 40, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="275" y="810" fill="white" font-size="8" font-weight="600" text-anchor="middle">Rollback Network</text>
+        <text x="275" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Restore Firewall</text>
+        <text x="275" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">Restore VLAN/DNS</text>
+
+        <rect x="350" y="790" width="130" height="60" rx="6" fill="rgba(198, 40, 40, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="415" y="810" fill="white" font-size="8" font-weight="600" text-anchor="middle">Rollback Security</text>
+        <text x="415" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Restore AD Groups</text>
+        <text x="415" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">Restore Certs</text>
+
+        <rect x="490" y="790" width="130" height="60" rx="6" fill="rgba(198, 40, 40, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="555" y="810" fill="white" font-size="8" font-weight="600" text-anchor="middle">Rollback CMDB</text>
+        <text x="555" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Restore CI Status</text>
+        <text x="555" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">Restore Relations</text>
+
+        <rect x="630" y="790" width="130" height="60" rx="6" fill="rgba(198, 40, 40, 0.2)" stroke="#fb7185" stroke-width="1"/>
+        <text x="695" y="810" fill="white" font-size="8" font-weight="600" text-anchor="middle">Rollback Hyper-V</text>
+        <text x="695" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Restore VM Config</text>
+        <text x="695" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">Reattach VHD</text>
+
+        <!-- Escalation Path -->
+        <rect x="780" y="790" width="200" height="60" rx="6" fill="rgba(245, 127, 23, 0.3)" stroke="#F57F17" stroke-width="1.5"/>
+        <text x="880" y="810" fill="white" font-size="9" font-weight="600" text-anchor="middle">Escalation Path</text>
+        <text x="880" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">Ops → Auto Dev → Process Owner</text>
+        <text x="880" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">P1: 5min | P2: 1h | P3: 1d | P4: 3d</text>
+
+        <!-- Final State -->
+        <rect x="1000" y="790" width="160" height="60" rx="6" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1.5"/>
+        <text x="1080" y="810" fill="#34d399" font-size="9" font-weight="600" text-anchor="middle">✓ Workflow Complete</text>
+        <text x="1080" y="825" fill="#94a3b8" font-size="7" text-anchor="middle">ITSM Auto-Close</text>
+        <text x="1080" y="838" fill="#94a3b8" font-size="7" text-anchor="middle">Audit Trail Logged</text>
+
+        <!-- Rollback arrows -->
+        <line x1="190" y1="820" x2="208" y2="820" stroke="#C62828" stroke-width="1" marker-end="url(#arrow-rose)"/>
+        <line x1="340" y1="820" x2="348" y2="820" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-rose)"/>
+        <line x1="480" y1="820" x2="488" y2="820" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-rose)"/>
+        <line x1="620" y1="820" x2="628" y2="820" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-rose)"/>
+        <line x1="760" y1="820" x2="778" y2="820" stroke="#fb7185" stroke-width="1" marker-end="url(#arrow-rose)"/>
+        <line x1="980" y1="820" x2="998" y2="820" stroke="#F57F17" stroke-width="1.5" marker-end="url(#arrow-amber)"/>
+
+        <!-- ============================================================ -->
+        <!-- LEGEND -->
+        <!-- ============================================================ -->
+        <rect x="850" y="15" width="320" height="90" rx="8" fill="rgba(15, 23, 42, 0.8)" stroke="#1e293b" stroke-width="1"/>
+        <text x="865" y="32" fill="white" font-size="9" font-weight="600">Legend</text>
+
+        <rect x="865" y="40" width="14" height="8" rx="2" fill="rgba(8, 51, 68, 0.4)" stroke="#22d3ee" stroke-width="1"/>
+        <text x="885" y="48" fill="#94a3b8" font-size="7">Trigger / Entry</text>
+
+        <rect x="865" y="52" width="14" height="8" rx="2" fill="rgba(6, 78, 59, 0.4)" stroke="#34d399" stroke-width="1"/>
+        <text x="885" y="60" fill="#94a3b8" font-size="7">n8n / Workflow</text>
+
+        <rect x="865" y="64" width="14" height="8" rx="2" fill="rgba(251, 191, 36, 0.3)" stroke="#fbbf24" stroke-width="1"/>
+        <text x="885" y="72" fill="#94a3b8" font-size="7">Approval / Decision</text>
+
+        <rect x="1020" y="40" width="14" height="8" rx="2" fill="rgba(167, 139, 250, 0.3)" stroke="#a78bfa" stroke-width="1"/>
+        <text x="1040" y="48" fill="#94a3b8" font-size="7">Runbook / Execution</text>
+
+        <rect x="1020" y="52" width="14" height="8" rx="2" fill="rgba(251, 146, 60, 0.3)" stroke="#fb923c" stroke-width="1"/>
+        <text x="1040" y="60" fill="#94a3b8" font-size="7">ITSM Integration</text>
+
+        <rect x="1020" y="64" width="14" height="8" rx="2" fill="rgba(136, 19, 55, 0.4)" stroke="#fb7185" stroke-width="1"/>
+        <text x="1040" y="72" fill="#94a3b8" font-size="7">Security / External</text>
+
+        <rect x="865" y="76" width="14" height="8" rx="2" fill="rgba(198, 40, 40, 0.3)" stroke="#C62828" stroke-width="1"/>
+        <text x="885" y="84" fill="#94a3b8" font-size="7">Error / Rollback</text>
+
+        <rect x="1020" y="76" width="14" height="8" rx="2" fill="rgba(40, 53, 128, 0.3)" stroke="#818cf8" stroke-width="1"/>
+        <text x="1040" y="84" fill="#94a3b8" font-size="7">Monitoring / Audit</text>
+      </svg>
+    </div>
+
+    <!-- Info Cards -->
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot cyan"></div>
+          <h3>Trigger & Workflow</h3>
+        </div>
+        <ul>
+          <li>• Asset Manager Dashboard → n8n Webhook</li>
+          <li>• CMDB Status Update → Event Trigger</li>
+          <li>• 10-State Workflow State Machine</li>
+          <li>• n8n Visual Workflow Designer</li>
+          <li>• HTTP Request Nodes for API Calls</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot amber"></div>
+          <h3>Approval Chain (UC8)</h3>
+        </div>
+        <ul>
+          <li>• Level 1: Team Lead (2h timeout)</li>
+          <li>• Level 2: Change Manager (4h timeout)</li>
+          <li>• Level 3: Director (24h timeout)</li>
+          <li>• Escalation → VP on timeout</li>
+          <li>• Rejection → Notify + Close ITSM</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot violet"></div>
+          <h3>Runbook Execution (UC13)</h3>
+        </div>
+        <ul>
+          <li>• Step 1: Pre-flight (CMDB Check)</li>
+          <li>• Step 2: Network Cleanup (Firewall/VLAN)</li>
+          <li>• Step 3: Security Cleanup (AD/Certs)</li>
+          <li>• Step 4: CMDB Update (→ Retired)</li>
+          <li>• Step 5-7: Asset/Financial/Physical</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot emerald"></div>
+          <h3>Hyper-V Integration</h3>
+        </div>
+        <ul>
+          <li>• PowerShell Remoting (WinRM/HTTPS)</li>
+          <li>• Invoke-Command -ComputerName</li>
+          <li>• Stop-VM / Remove-VM / Remove-Item</li>
+          <li>• -WhatIf flag for dry-run</li>
+          <li>• ErrorAction: Stop + Try/Catch</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot orange"></div>
+          <h3>ITSM & External Systems</h3>
+        </div>
+        <ul>
+          <li>• ServiceNow / Jira Integration</li>
+          <li>• Bidirectional Status Sync</li>
+          <li>• CMDB / Asset Repository</li>
+          <li>• Financial System (Depreciation)</li>
+          <li>• Network / Security / Vault</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot rose"></div>
+          <h3>Error Handling & Monitoring</h3>
+        </div>
+        <ul>
+          <li>• Auto-rollback on critical failure</li>
+          <li>• Escalation: Ops → Dev → Owner</li>
+          <li>• Prometheus + Grafana metrics</li>
+          <li>• 100% audit trail coverage</li>
+          <li>• Elasticsearch execution logs</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="footer">
+      DCIM Core Platform • Server Decommissioning Workflow Architecture • n8n + Hyper-V PowerShell Remoting • 2026-06-26
+    </p>
+  </div>
+</body>
+</html>

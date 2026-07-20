@@ -1,0 +1,113 @@
+# Block 7 Analytics & AI Engine — Prometheus Alert Rules
+# Deploy: kubectl apply -f prometheus-rules.yaml
+# Manual test: curl -s http://localhost:8000/metrics | grep dcim_
+
+groups:
+  - name: dcim_analytics
+    interval: 30s
+    rules:
+
+      # R1: Anomaly rate spike
+      # Fires when anomaly detection rate exceeds threshold over 5 minutes.
+      # Catches sudden infrastructure degradation.
+      - alert: AnomalyRateHigh
+        expr: |
+          rate(dcim_api_requests_total{endpoint="anomalies/detect",method="POST"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: anomaly_detection
+          block: "7"
+        annotations:
+          summary: "Anomaly detection rate elevated"
+          description: |
+            Anomaly detection endpoint received {{ $value | humanize }} requests/sec
+            over the last 5 minutes. Investigate if this reflects real infrastructure
+            issues or a noisy metric.
+          runbook: "Check TimescaleDB: SELECT * FROM anomaly_events WHERE timestamp > NOW() - INTERVAL '10 minutes'"
+          dashboard: "DCIM Analytics Overview"
+
+      # R2: Prediction drift
+      # Fires when model drift score exceeds threshold.
+      # Indicates model-performance degradation requiring retraining.
+      - alert: ModelDriftDetected
+        expr: |
+          dcim_temporal_anomaly_ratio > 0.7
+        for: 5m
+        labels:
+          severity: critical
+          component: model_monitoring
+          block: "7"
+        annotations:
+          summary: "Model drift detected — retraining recommended"
+          description: |
+            Temporal anomaly ratio is {{ $value }} (>70%) over 5 minutes.
+            Model predictions may be unreliable. Auto-retrain trigger should
+            fire if drift persists.
+          runbook: |
+            1. Check model version: GET /api/v1/analytics/models
+            2. Review recent predictions: GET /api/v1/analytics/predictions
+            3. Trigger manual retrain: POST /api/v1/analytics/models/{id}/retrain
+          dashboard: "DCIM Model Performance"
+
+      # R3: PUE deviation
+      # Fires when PUE exceeds acceptable thresholds.
+      # Cooling or power distribution problem.
+      - alert: PUEHigh
+        expr: |
+          dcim_pue_current > 1.8
+        for: 15m
+        labels:
+          severity: warning
+          component: energy_optimization
+          block: "7"
+        annotations:
+          summary: "PUE elevated above 1.8"
+          description: |
+            Current PUE is {{ $value }}. High PUE indicates cooling or power
+            distribution inefficiency. Check CRAC set points, UPS efficiency,
+            and airflow management.
+          runbook: "GET /api/v1/analytics/energy/pue → review recommendations"
+          dashboard: "DCIM Energy Efficiency"
+
+      # R4: RCA latency
+      # Fires when RCA analysis exceeds SLA (30 seconds).
+      - alert: RCAHighLatency
+        expr: |
+          histogram_quantile(0.99, rate(dcim_rca_latency_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+          component: rca_engine
+          block: "7"
+        annotations:
+          summary: "RCA analysis latency exceeds 30s SLA (p99)"
+          description: |
+            RCA p99 latency is {{ $value }}s over 5 minutes.
+            Check TimescaleDB query performance, topology traversal depth,
+            or CMDB responsiveness.
+          runbook: "Check DB: SELECT query, mean_exec_time FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT 10"
+          dashboard: "DCIM RCA Performance"
+
+      # R5: LLM error rate
+      # Fires when LLM queries frequently fall back to templates.
+      # Indicates Gemma 4 serving issue.
+      - alert: LLMErrorRateHigh
+        expr: |
+          rate(dcim_llm_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: llm_rag
+          block: "7"
+        annotations:
+          summary: "LLM fallback rate elevated"
+          description: |
+            LLM error rate is {{ $value }}/sec over 5 minutes.
+            Queries are falling back to template-based answers.
+            Check llama-server health: curl http://localhost:8080/health
+          runbook: |
+            1. Verify llama-server: ps aux | grep llama-server
+            2. Check GPU: nvidia-smi
+            3. Restart if needed: systemctl restart llama-server
+          dashboard: "DCIM LLM Performance"

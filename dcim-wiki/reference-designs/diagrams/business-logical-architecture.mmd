@@ -1,0 +1,97 @@
+flowchart LR
+  %% DCIM Core Platform - Business / Logical Architecture
+
+  subgraph SRC["Source Systems and External Domains"]
+    FAC["Facilities OT<br/>BMS EPMS EMS UPS PDU CRAC Sensors"]
+    IT["IT Infrastructure<br/>Servers Storage NMS Virtualization Cloud"]
+    SEC["Security and Physical<br/>Access Control CCTV NVR Firewall EDR"]
+    ENT["Enterprise Systems<br/>ITSM ERP DMS Vendor APIs"]
+  end
+
+  subgraph CORE["DCIM Core Platform"]
+    DII["Data Ingestion and Integration<br/>Single Gateway"]
+    BUS["Kafka Event Backbone<br/>HA RF=3 TLS Schema Registry"]
+    CMDB["CMDB<br/>CI SSOT Relationship Topology Impact"]
+    AR["Asset Repository<br/>Asset Financial Contract SSOT"]
+    TS["Time Series and Log Stores<br/>TimescaleDB Elasticsearch"]
+    AI["Analytics and AI Engine<br/>Anomaly Predictive RCA Capacity Energy LLM RAG"]
+    SIEM["SIEM and SOC<br/>Wazuh Correlation Case Response"]
+    WF["Workflow Automation<br/>n8n or Temporal Runbook Approval Remediation"]
+    API["API Gateway<br/>Auth RBAC Rate Limit Cache"]
+    DASH["Web Dashboard and BI<br/>NOC SOC Facilities Management"]
+  end
+
+  subgraph OPS["Operational Consumers"]
+    NOC["NOC Operators"]
+    SOC["SOC Analysts"]
+    FACOPS["Facilities Operations"]
+    MGMT["Management and Audit"]
+  end
+
+  subgraph XCUT["Cross Cutting Controls"]
+    VAULT["Vault Secrets"]
+    OBS["Prometheus Grafana Kibana"]
+    GOV["RBAC TLS mTLS ACL Audit Trail"]
+  end
+
+  FAC --> DII
+  IT --> DII
+  SEC --> DII
+  ENT --> DII
+
+  SEC --> SIEM
+  DII --> BUS
+  BUS --> CMDB
+  BUS --> AR
+  BUS --> TS
+  BUS --> AI
+  BUS --> SIEM
+  BUS --> WF
+
+  CMDB <--> AR
+  CMDB --> AI
+  AR --> AI
+  TS --> AI
+  SIEM --> WF
+  AI --> WF
+  WF --> ENT
+  WF --> DII
+
+  CMDB --> API
+  AR --> API
+  TS --> API
+  AI --> API
+  SIEM --> API
+  WF --> API
+  API --> DASH
+
+  DASH --> NOC
+  DASH --> SOC
+  DASH --> FACOPS
+  DASH --> MGMT
+
+  VAULT -. secrets .-> DII
+  VAULT -. secrets .-> CMDB
+  VAULT -. secrets .-> AR
+  VAULT -. secrets .-> AI
+  VAULT -. secrets .-> SIEM
+  VAULT -. secrets .-> WF
+  OBS -. metrics logs traces .-> CORE
+  GOV -. policies .-> CORE
+
+  classDef source fill:#e8f4ff,stroke:#2b6cb0,color:#0b1f33,stroke-width:1px
+  classDef core fill:#eef2ff,stroke:#4f46e5,color:#111827,stroke-width:1.5px
+  classDef data fill:#ecfdf5,stroke:#059669,color:#06281d,stroke-width:1.5px
+  classDef intelligence fill:#fff7ed,stroke:#ea580c,color:#431407,stroke-width:1.5px
+  classDef security fill:#fef2f2,stroke:#dc2626,color:#450a0a,stroke-width:1.5px
+  classDef ops fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1px
+  classDef control fill:#f5f3ff,stroke:#7c3aed,color:#1e1b4b,stroke-width:1px
+
+  class FAC,IT,SEC,ENT source
+  class DII,BUS,API,DASH core
+  class CMDB,AR,TS data
+  class AI intelligence
+  class SIEM security
+  class WF core
+  class NOC,SOC,FACOPS,MGMT ops
+  class VAULT,OBS,GOV control

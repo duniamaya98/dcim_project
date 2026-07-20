@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dcim.local/schemas/incident_report.schema.json",
+  "title": "DCIM Agent Incident Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "incident_id",
+    "status",
+    "summary",
+    "evidence",
+    "risk",
+    "recommended_action",
+    "tool_calls",
+    "requires_human_approval",
+    "approval_request",
+    "missing_evidence",
+    "confidence"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "dcim-agent-response/v1"
+    },
+    "incident_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "investigating",
+        "needs_more_data",
+        "ready_for_approval",
+        "action_executed",
+        "escalated",
+        "resolved"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source",
+          "timestamp",
+          "asset_id",
+          "kind",
+          "summary",
+          "confidence",
+          "value",
+          "metadata"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "timestamp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "asset_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["fact", "live_observation", "inference", "operator_note"]
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "value": {},
+          "metadata": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "recommended_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_calls": {
+      "type": "array",
+      "items": {
+        "$ref": "tool_call.schema.json"
+      }
+    },
+    "requires_human_approval": {
+      "type": "boolean"
+    },
+    "approval_request": {
+      "anyOf": [
+        {
+          "$ref": "approval_request.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

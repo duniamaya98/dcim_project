@@ -308,7 +308,7 @@ async def trigger_detection(
         if current_value is None:
             cur.execute(
                 """
-                SELECT value, ci_id, asset_id, source, unit, tags
+                SELECT value, time, ci_id, asset_id, source, unit, tags
                 FROM metrics
                 WHERE metric_name = %s
                   AND time > NOW() - INTERVAL '6 hours'

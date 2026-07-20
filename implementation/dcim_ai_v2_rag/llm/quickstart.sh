@@ -11,10 +11,10 @@ echo "=========================================="
 echo ""
 
 # Configuration
-WORK_DIR="/home/infra/rnd_rag-anything"
-VENV_PATH="$WORK_DIR/ragavenv"
-DATASET_DIR="$WORK_DIR/dcim_ai/llm/datasets"
-MODEL_DIR="$WORK_DIR/dcim_ai/llm/models"
+WORK_DIR="/home/infra/dcim_project/implementation"
+VENV_PATH="/home/infra/dcim_project/ragavenv"
+DATASET_DIR="$WORK_DIR/dcim_ai_v2_rag/llm/datasets"
+MODEL_DIR="$WORK_DIR/dcim_ai_v2_rag/llm/models"
 
 # Colors
 GREEN='\033[0;32m'

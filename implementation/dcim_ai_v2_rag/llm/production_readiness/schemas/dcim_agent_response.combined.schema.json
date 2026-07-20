@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dcim.local/schemas/dcim_agent_response.combined.schema.json",
+  "title": "DCIM Agent Response (self-contained, for llama.cpp json_schema constrained decoding)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "incident_id", "status", "summary", "evidence", "risk",
+    "recommended_action", "tool_calls", "requires_human_approval",
+    "approval_request", "missing_evidence", "confidence"
+  ],
+  "properties": {
+    "schema_version": { "const": "dcim-agent-response/v1" },
+    "incident_id": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["investigating", "needs_more_data", "ready_for_approval",
+               "action_executed", "escalated", "resolved"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "evidence": { "type": "array", "items": { "$ref": "#/$defs/evidence" } },
+    "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+    "recommended_action": { "type": "string", "minLength": 1 },
+    "tool_calls": { "type": "array", "items": { "$ref": "#/$defs/tool_call" } },
+    "requires_human_approval": { "type": "boolean" },
+    "approval_request": {
+      "anyOf": [ { "$ref": "#/$defs/approval_request" }, { "type": "null" } ]
+    },
+    "missing_evidence": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "source", "timestamp", "asset_id", "kind", "summary",
+                   "confidence", "value", "metadata"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "minLength": 1 },
+        "asset_id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["fact", "live_observation", "inference", "operator_note"] },
+        "summary": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "value": { "type": ["object", "array", "string", "number", "boolean", "null"] },
+        "metadata": { "type": "object" }
+      }
+    },
+    "tool_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "action_type", "tool_name", "arguments", "risk",
+                   "requires_approval", "reason", "timeout_seconds"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "action_type": {
+          "type": "string",
+          "enum": ["read_metrics", "query_logs", "lookup_asset", "search_ticket",
+                   "retrieve_sop", "create_ticket", "update_ticket", "notify",
+                   "request_approval", "restart_service", "restart_host",
+                   "power_cycle", "change_config", "suppress_alert",
+                   "close_high_severity_incident"]
+        },
+        "tool_name": { "type": "string", "minLength": 1 },
+        "arguments": { "type": "object" },
+        "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "requires_approval": { "type": "boolean" },
+        "reason": { "type": "string", "minLength": 1 },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "maximum": 300 }
+      }
+    },
+    "approval_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "requested_action_id", "approver_role", "reason",
+                   "risk", "evidence_ids", "expires_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "requested_action_id": { "type": "string", "minLength": 1 },
+        "approver_role": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "risk": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "evidence_ids": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "expires_at": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

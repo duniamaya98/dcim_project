@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dcim.local/schemas/tool_selection.schema.json",
+  "title": "DCIM Tool Selection (small constrained pick; args filled in code)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selections"],
+  "properties": {
+    "selections": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action_type", "asset_id", "reason"],
+        "properties": {
+          "action_type": {
+            "type": "string",
+            "enum": ["read_metrics", "query_logs", "lookup_asset", "search_ticket",
+                     "retrieve_sop", "create_ticket", "update_ticket", "notify",
+                     "request_approval", "restart_service", "restart_host",
+                     "power_cycle", "change_config", "suppress_alert",
+                     "close_high_severity_incident"]
+          },
+          "asset_id": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

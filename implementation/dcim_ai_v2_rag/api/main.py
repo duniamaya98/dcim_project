@@ -17,7 +17,7 @@ Reference:
 
 from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from typing import Optional, List
 import logging
 from datetime import datetime
@@ -33,6 +33,40 @@ from .routers import (
 )
 from .dependencies import get_current_user, get_db_connection
 from .config import settings
+
+# ─── Prometheus metrics ────────────────────────────
+try:
+    from prometheus_client import Counter, Histogram, Gauge, generate_latest, REGISTRY
+
+    METRICS_API_REQUESTS = Counter(
+        "dcim_api_requests_total", "Total API requests", ["endpoint", "method"]
+    )
+    METRICS_API_LATENCY = Histogram(
+        "dcim_api_latency_seconds", "API request latency", ["endpoint"]
+    )
+    METRICS_ANOMALIES_ACTIVE = Gauge(
+        "dcim_anomalies_active_total", "Active anomalies in last hour"
+    )
+    METRICS_PREDICTIONS_CRITICAL = Gauge(
+        "dcim_predictions_critical_total", "Critical predictions in last 24h"
+    )
+    METRICS_PUE_CURRENT = Gauge(
+        "dcim_pue_current", "Current PUE value"
+    )
+    METRICS_RCA_LATENCY = Histogram(
+        "dcim_rca_latency_seconds", "RCA analysis latency"
+    )
+    METRICS_LLM_LATENCY = Histogram(
+        "dcim_llm_latency_seconds", "LLM query latency"
+    )
+    METRICS_LLM_ERRORS = Counter(
+        "dcim_llm_errors_total", "LLM query errors (fell back to template)"
+    )
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("prometheus_client not available — metrics disabled")
 
 # Configure logging
 logging.basicConfig(
@@ -107,6 +141,14 @@ async def health_check():
         "version": "1.0.0",
         "service": "analytics-ai-engine"
     }
+
+
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """Prometheus metrics endpoint."""
+    if PROMETHEUS_AVAILABLE:
+        return Response(generate_latest(), media_type="text/plain; charset=utf-8")
+    return {"status": "prometheus not available"}
 
 
 @app.get("/api/v1/health", tags=["Health"])

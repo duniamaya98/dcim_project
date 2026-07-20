@@ -15,7 +15,7 @@ echo ""
 
 # Project root
 export DCIM_PROJECT="/home/infra/dcim_project"
-export DCIM_VENV="/home/infra/rnd_rag-anything/ragavenv"
+export DCIM_VENV="/home/infra/dcim_project/ragavenv"
 
 # Quick navigation aliases
 alias dcim='cd /home/infra/dcim_project'
@@ -30,11 +30,11 @@ alias dcim-ref='cd /home/infra/dcim_project/reference_docs'
 alias dcim-analysis='cd /home/infra/dcim_project/analysis'
 
 # Virtual environment
-alias dcim-activate='source /home/infra/rnd_rag-anything/ragavenv/bin/activate'
+alias dcim-activate='source /home/infra/dcim_project/ragavenv/bin/activate'
 
 # Model registry shortcuts
-alias dcim-registry-list='cd /home/infra/dcim_project/implementation/dcim_ai_v2_rag/llm && source /home/infra/rnd_rag-anything/ragavenv/bin/activate && python model_registry_standalone.py list'
-alias dcim-registry-active='cd /home/infra/dcim_project/implementation/dcim_ai_v2_rag/llm && source /home/infra/rnd_rag-anything/ragavenv/bin/activate && python model_registry_standalone.py active --name dcim_assistant'
+alias dcim-registry-list='cd /home/infra/dcim_project/implementation/dcim_ai_v2_rag/llm && source /home/infra/dcim_project/ragavenv/bin/activate && python model_registry_standalone.py list'
+alias dcim-registry-active='cd /home/infra/dcim_project/implementation/dcim_ai_v2_rag/llm && source /home/infra/dcim_project/ragavenv/bin/activate && python model_registry_standalone.py active --name dcim_assistant'
 
 # Quick commands
 alias dcim-tree='tree -L 3 -I "__pycache__|*.pyc|venv" /home/infra/dcim_project'

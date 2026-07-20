@@ -1,0 +1,59 @@
+version: dcim-tool-catalog/v1
+default_timeout_seconds: 30
+default_rate_limit_per_minute: 30
+tools:
+  - name: prometheus_query
+    action_types: ["read_metrics"]
+    mode: read_only
+    owner: user
+    required_arguments: ["query", "start", "end", "step"]
+    max_timeout_seconds: 60
+    approval_required: false
+  - name: loki_query
+    action_types: ["query_logs"]
+    mode: read_only
+    owner: user
+    required_arguments: ["query", "start", "end"]
+    max_timeout_seconds: 60
+    approval_required: false
+  - name: dcim_asset_lookup
+    action_types: ["lookup_asset"]
+    mode: read_only
+    owner: user
+    required_arguments: ["asset_id"]
+    max_timeout_seconds: 30
+    approval_required: false
+  - name: sop_retriever
+    action_types: ["retrieve_sop"]
+    mode: read_only
+    owner: codex
+    required_arguments: ["query", "domain", "severity"]
+    max_timeout_seconds: 20
+    approval_required: false
+  - name: ticketing
+    action_types: ["search_ticket", "create_ticket", "update_ticket"]
+    mode: controlled_write
+    owner: user
+    required_arguments: ["incident_id"]
+    max_timeout_seconds: 30
+    approval_required: false
+  - name: pager
+    action_types: ["notify", "request_approval"]
+    mode: controlled_write
+    owner: user
+    required_arguments: ["channel", "message"]
+    max_timeout_seconds: 30
+    approval_required: false
+  - name: runbook_automation
+    action_types:
+      - restart_service
+      - restart_host
+      - power_cycle
+      - change_config
+      - suppress_alert
+      - close_high_severity_incident
+    mode: destructive
+    owner: user
+    required_arguments: ["target", "runbook_id", "change_reason"]
+    max_timeout_seconds: 120
+    approval_required: true

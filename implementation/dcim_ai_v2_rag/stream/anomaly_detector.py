@@ -117,7 +117,6 @@ class AnomalyDetectionProcessor:
     def calculate_zscore(self, values: List[float], current_value: float) -> float:
         """Calculate Z-score for current value against historical values"""
         if len(values) < 10:
-            # Not enough data
             return 0.0
 
         arr = np.array(values)
@@ -129,6 +128,63 @@ class AnomalyDetectionProcessor:
 
         zscore = abs((current_value - mean) / std)
         return zscore
+
+    def decompose_seasonal(self, values: List[float], period: int = 24) -> Optional[Dict[str, Any]]:
+        """
+        Decompose time series into trend, seasonal, and residual components.
+
+        Uses simple moving-average based STL-like decomposition.
+        Requires >= 2*period data points.
+
+        Returns:
+            {trend, seasonal, residual, trend_strength, seasonal_strength}
+            or None if insufficient data.
+        """
+        if len(values) < 2 * period:
+            return None
+
+        try:
+            arr = np.array(values, dtype=np.float64)
+            n = len(arr)
+
+            # Trend: centered moving average with period window
+            half = period // 2
+            trend = np.zeros(n)
+            for i in range(n):
+                lo = max(0, i - half)
+                hi = min(n, i + half + 1)
+                trend[i] = np.mean(arr[lo:hi])
+
+            # Detrend
+            detrended = arr - trend
+
+            # Seasonal: average detrended across periods
+            seasonal = np.zeros(n)
+            for i in range(period):
+                idx = list(range(i, n, period))
+                if idx:
+                    seasonal[i] = np.mean(detrended[idx])
+            seasonal = np.tile(seasonal, (n // period) + 1)[:n]
+
+            # Residual
+            residual = arr - trend - seasonal
+
+            # Strength metrics
+            ss_total = np.var(arr) if np.var(arr) > 0 else 1.0
+            trend_strength = max(0.0, 1.0 - np.var(residual) / np.var(trend + residual))
+            seasonal_strength = max(0.0, 1.0 - np.var(residual) / np.var(seasonal + residual))
+
+            return {
+                "trend": trend.tolist(),
+                "seasonal": seasonal.tolist(),
+                "residual": residual.tolist(),
+                "trend_strength": round(float(trend_strength), 4),
+                "seasonal_strength": round(float(seasonal_strength), 4),
+                "period": period,
+            }
+        except Exception as e:
+            logger.warning(f"Seasonal decomposition failed: {e}")
+            return None
 
     def classify_severity(self, zscore: float) -> str:
         """Classify anomaly severity based on Z-score"""

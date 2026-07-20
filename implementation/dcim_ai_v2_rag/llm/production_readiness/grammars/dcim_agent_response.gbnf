@@ -1,0 +1,106 @@
+# GBNF grammar untuk dcim-agent-response/v1
+#
+# Menjamin JSON valid di level decoder llama.cpp (--grammar-file atau field "grammar").
+# Menutup gap json_mode secara struktural: output TIDAK MUNGKIN non-JSON.
+#
+# PENTING: angka SENGAJA dibatasi jumlah digitnya. Model Q4 ini cenderung
+# terjebak loop pengulangan digit (mis. 0.8500000000..., 11111...) jika decimal
+# tidak dibatasi — itu yang membuat json_schema mode truncated. Batasan {1,3}/{1,2}
+# di bawah memutus loop tsebelum melewati n_predict.
+#
+# Enum dikunci sinkron dengan production_readiness_contract.py.
+#
+# Pakai:
+#   field request "grammar": <isi file ini>   (native /completion)
+#   atau llama-server --grammar-file dcim_agent_response.gbnf
+
+root ::= "{" ws
+  "\"schema_version\":" ws "\"dcim-agent-response/v1\"" ws "," ws
+  "\"incident_id\":" ws nestring ws "," ws
+  "\"status\":" ws status ws "," ws
+  "\"summary\":" ws nestring ws "," ws
+  "\"evidence\":" ws evidence-array ws "," ws
+  "\"risk\":" ws risk ws "," ws
+  "\"recommended_action\":" ws nestring ws "," ws
+  "\"tool_calls\":" ws toolcall-array ws "," ws
+  "\"requires_human_approval\":" ws boolean ws "," ws
+  "\"approval_request\":" ws approval-or-null ws "," ws
+  "\"missing_evidence\":" ws string-array ws "," ws
+  "\"confidence\":" ws unit ws
+"}" ws
+
+status ::= "\"investigating\"" | "\"needs_more_data\"" | "\"ready_for_approval\"" | "\"action_executed\"" | "\"escalated\"" | "\"resolved\""
+
+risk ::= "\"low\"" | "\"medium\"" | "\"high\"" | "\"critical\""
+
+kind ::= "\"fact\"" | "\"live_observation\"" | "\"inference\"" | "\"operator_note\""
+
+action-type ::= "\"read_metrics\"" | "\"query_logs\"" | "\"lookup_asset\"" | "\"search_ticket\"" | "\"retrieve_sop\"" | "\"create_ticket\"" | "\"update_ticket\"" | "\"notify\"" | "\"request_approval\"" | "\"restart_service\"" | "\"restart_host\"" | "\"power_cycle\"" | "\"change_config\"" | "\"suppress_alert\"" | "\"close_high_severity_incident\""
+
+# ---- evidence ----
+evidence-array ::= "[" ws ( evidence ( ws "," ws evidence )* ws )? "]"
+evidence ::= "{" ws
+  "\"id\":" ws nestring ws "," ws
+  "\"source\":" ws nestring ws "," ws
+  "\"timestamp\":" ws nestring ws "," ws
+  "\"asset_id\":" ws nestring ws "," ws
+  "\"kind\":" ws kind ws "," ws
+  "\"summary\":" ws nestring ws "," ws
+  "\"confidence\":" ws unit ws "," ws
+  "\"value\":" ws value ws "," ws
+  "\"metadata\":" ws object ws
+"}"
+
+# ---- tool calls ----
+toolcall-array ::= "[" ws ( toolcall ( ws "," ws toolcall )* ws )? "]"
+toolcall ::= "{" ws
+  "\"id\":" ws nestring ws "," ws
+  "\"action_type\":" ws action-type ws "," ws
+  "\"tool_name\":" ws nestring ws "," ws
+  "\"arguments\":" ws object ws "," ws
+  "\"risk\":" ws risk ws "," ws
+  "\"requires_approval\":" ws boolean ws "," ws
+  "\"reason\":" ws nestring ws "," ws
+  "\"timeout_seconds\":" ws timeout ws
+"}"
+
+# ---- approval ----
+approval-or-null ::= "null" | approval
+approval ::= "{" ws
+  "\"id\":" ws nestring ws "," ws
+  "\"requested_action_id\":" ws nestring ws "," ws
+  "\"approver_role\":" ws nestring ws "," ws
+  "\"reason\":" ws nestring ws "," ws
+  "\"risk\":" ws risk ws "," ws
+  "\"evidence_ids\":" ws nestring-array ws "," ws
+  "\"expires_at\":" ws nestring ws
+"}"
+
+# ---- generic JSON value (bounded) ----
+value ::= object | array | nestring | number | boolean | "null"
+object ::= "{" ws ( member ( ws "," ws member )* ws )? "}"
+member ::= string ws ":" ws value
+array ::= "[" ws ( value ( ws "," ws value )* ws )? "]"
+string-array ::= "[" ws ( string ( ws "," ws string )* ws )? "]"
+nestring-array ::= "[" ws nestring ( ws "," ws nestring )* ws "]"
+
+# string: JSON string. nestring: minLength 1.
+string ::= "\"" char* "\""
+nestring ::= "\"" char char* "\""
+char ::= [^"\\] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
+hex ::= [0-9a-fA-F]
+
+# number: decimal dibatasi 1-3 digit pecahan, integer maksimal 6 digit -> cegah loop.
+number ::= "-"? intpart frac?
+intpart ::= "0" | [1-9] [0-9]{0,5}
+frac ::= "." [0-9] [0-9]{0,2}
+
+# timeout_seconds: 1..300 (schema). Dibatasi 1-3 digit.
+timeout ::= [1-9] [0-9]{0,2}
+
+# unit: confidence 0..1 dengan 1-2 digit pecahan.
+unit ::= "0" ( "." [0-9] [0-9]? )? | "1" ( "." "0" "0"? )?
+
+boolean ::= "true" | "false"
+
+ws ::= [ \t\n]{0,4}

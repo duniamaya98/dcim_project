@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dcim.local/schemas/approval_request.schema.json",
+  "title": "DCIM Agent Approval Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "requested_action_id",
+    "approver_role",
+    "reason",
+    "risk",
+    "evidence_ids",
+    "expires_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_action_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approver_role": {
+      "type": "string",
+      "enum": ["noc_operator", "dcim_engineer", "sre_lead", "dcim_lead", "incident_commander"]
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "evidence_ids": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

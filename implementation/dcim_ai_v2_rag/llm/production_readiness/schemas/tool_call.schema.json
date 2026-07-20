@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dcim.local/schemas/tool_call.schema.json",
+  "title": "DCIM Agent Tool Call",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "action_type",
+    "tool_name",
+    "arguments",
+    "risk",
+    "requires_approval",
+    "reason",
+    "timeout_seconds"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "read_metrics",
+        "query_logs",
+        "lookup_asset",
+        "search_ticket",
+        "retrieve_sop",
+        "create_ticket",
+        "update_ticket",
+        "notify",
+        "request_approval",
+        "restart_service",
+        "restart_host",
+        "power_cycle",
+        "change_config",
+        "suppress_alert",
+        "close_high_severity_incident"
+      ]
+    },
+    "tool_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "arguments": {
+      "type": "object"
+    },
+    "risk": {
+      "type": "string",
+      "enum": ["low", "medium", "high", "critical"]
+    },
+    "requires_approval": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timeout_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    }
+  }
+}

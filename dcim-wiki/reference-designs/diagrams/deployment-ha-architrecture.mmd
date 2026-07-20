@@ -1,0 +1,175 @@
+flowchart TD
+  %% Repaired Mermaid chart: no HTML labels, no nested subgraphs, no edges to subgraph IDs
+
+  subgraph VLAN[Network Segmentation]
+    V_MGMT[Management VLAN 10.70.0.0/24]
+    V_APP[Application and Data VLAN 10.70.1.0/24]
+    V_NVR[NVR and CCTV VLAN 10.70.2.0/24]
+    V_OT[Facilities OT VLAN 10.70.3.0/24]
+    V_SOC[SOC Security VLAN 10.70.4.0/24]
+  end
+
+  FW[Firewall and Routing Policy]
+
+  subgraph ACCESS[Access Zone]
+    LB[Load Balancer]
+    GW[API Gateway]
+    UI[Web Dashboard]
+  end
+
+  subgraph APP[Application and Worker Zone]
+    APP_A[App Node 1 - DII CMDB Asset APIs]
+    APP_B[App Node 2 - Analytics Workflow SIEM Bridge]
+    WORKER_A[Worker Node 1 - Validation Enrichment Consumers]
+    WORKER_B[Worker Node 2 - Analytics SIEM Workflow Lineage]
+    NIFI[NiFi Cluster]
+    COLLECT[Collectors - Telegraf Wazuh Filebeat]
+  end
+
+  subgraph KAFKA[Kafka HA Zone]
+    KAFKA1[Kafka Broker 1 - KRaft Controller]
+    KAFKA2[Kafka Broker 2 - KRaft Broker]
+    KAFKA3[Kafka Broker 3 - KRaft Broker]
+    REGISTRY[Schema Registry]
+  end
+
+  subgraph DATABASE[Database HA Zone]
+    PGBOUNCER[PgBouncer]
+    PG_PRIMARY[PostgreSQL Primary]
+    PG_REPLICA[PostgreSQL Replica]
+    REDIS_PRIMARY[Redis Primary]
+    REDIS_REPLICA[Redis Replica]
+    REDIS_SENTINEL[Redis Sentinel Quorum]
+  end
+
+  subgraph SEARCH[Search and SIEM Storage Zone]
+    ES1[Elasticsearch Node 1]
+    ES2[Elasticsearch Node 2]
+    ES3[Elasticsearch Node 3]
+  end
+
+  subgraph SECURITY[SIEM SOAR Incident Zone]
+    WAZUH[Wazuh Manager Cluster]
+    TRACECAT[Tracecat SOAR]
+    ITSM[DFIR IRIS or ITSM]
+  end
+
+  subgraph OBS[Observability and Control]
+    VAULT[Vault Active Standby]
+    PROM[Prometheus]
+    GRAF[Grafana]
+    BACKUP[Backup and DR Target]
+  end
+
+  subgraph OWNER[Service Ownership]
+    OWN_PLATFORM[Platform Team - Kafka Postgres Redis Vault Monitoring]
+    OWN_INTEGRATION[Integration Team - Collectors NiFi Consumers]
+    OWN_DATA[Data and AI Team - CMDB Asset Analytics Lineage]
+    OWN_SOC[SOC Team - Wazuh ES Tracecat Detection]
+    OWN_OPS[Operations Team - Dashboard Workflow Runbooks]
+  end
+
+  V_MGMT --> FW
+  V_APP --> FW
+  V_NVR --> FW
+  V_OT --> FW
+  V_SOC --> FW
+
+  FW --> LB
+  FW --> COLLECT
+  FW --> NIFI
+  LB --> GW
+  GW --> UI
+  GW --> APP_A
+  GW --> APP_B
+
+  COLLECT --> KAFKA1
+  NIFI --> KAFKA1
+  WORKER_A --> KAFKA1
+  WORKER_B --> KAFKA2
+  APP_A --> PGBOUNCER
+  APP_B --> PGBOUNCER
+  WORKER_A --> PGBOUNCER
+  WORKER_B --> PGBOUNCER
+  WORKER_A --> REDIS_PRIMARY
+  WORKER_B --> REDIS_PRIMARY
+  WORKER_B --> ES1
+
+  KAFKA1 <--> KAFKA2
+  KAFKA2 <--> KAFKA3
+  KAFKA1 <--> KAFKA3
+  REGISTRY --> KAFKA1
+  REGISTRY --> KAFKA2
+  REGISTRY --> KAFKA3
+
+  PGBOUNCER --> PG_PRIMARY
+  PG_PRIMARY -. streaming replication .-> PG_REPLICA
+  PG_REPLICA -. promote on failure .-> PG_PRIMARY
+
+  REDIS_PRIMARY -. replication .-> REDIS_REPLICA
+  REDIS_SENTINEL -. monitor .-> REDIS_PRIMARY
+  REDIS_SENTINEL -. monitor .-> REDIS_REPLICA
+  REDIS_SENTINEL -. promote replica .-> REDIS_REPLICA
+
+  ES1 <--> ES2
+  ES2 <--> ES3
+  ES1 <--> ES3
+
+  WAZUH --> ES1
+  WAZUH --> ES2
+  ES1 --> TRACECAT
+  TRACECAT --> ITSM
+  TRACECAT --> APP_B
+
+  VAULT -. secrets and certificates .-> APP_A
+  VAULT -. secrets and certificates .-> APP_B
+  VAULT -. secrets and certificates .-> KAFKA1
+  VAULT -. secrets and certificates .-> PG_PRIMARY
+  VAULT -. secrets and certificates .-> WAZUH
+
+  PROM -. scrape metrics .-> APP_A
+  PROM -. scrape metrics .-> APP_B
+  PROM -. scrape metrics .-> KAFKA1
+  PROM -. scrape metrics .-> PG_PRIMARY
+  PROM -. scrape metrics .-> ES1
+  PROM -. scrape metrics .-> WAZUH
+  PROM --> GRAF
+
+  PG_PRIMARY --> BACKUP
+  PG_REPLICA --> BACKUP
+  ES1 --> BACKUP
+  KAFKA1 --> BACKUP
+  VAULT --> BACKUP
+
+  KAFKA1 -. RF3 and min ISR2 failover .-> WORKER_A
+  PG_REPLICA -. database failover target .-> APP_A
+  REDIS_REPLICA -. cache failover target .-> WORKER_B
+  ES2 -. shard replica failover .-> WAZUH
+
+  OWN_PLATFORM -. owns .-> KAFKA1
+  OWN_PLATFORM -. owns .-> PG_PRIMARY
+  OWN_PLATFORM -. owns .-> REDIS_PRIMARY
+  OWN_PLATFORM -. owns .-> VAULT
+  OWN_INTEGRATION -. owns .-> NIFI
+  OWN_INTEGRATION -. owns .-> COLLECT
+  OWN_DATA -. owns .-> APP_A
+  OWN_DATA -. owns .-> WORKER_B
+  OWN_SOC -. owns .-> WAZUH
+  OWN_SOC -. owns .-> TRACECAT
+  OWN_OPS -. owns .-> UI
+
+  classDef vlan fill:#e8f4ff,stroke:#2b6cb0,color:#0b1f33,stroke-width:1px
+  classDef network fill:#fff7ed,stroke:#ea580c,color:#431407,stroke-width:1.5px
+  classDef app fill:#eef2ff,stroke:#4f46e5,color:#111827,stroke-width:1.5px
+  classDef storage fill:#ecfdf5,stroke:#059669,color:#06281d,stroke-width:1.5px
+  classDef sec fill:#fef2f2,stroke:#dc2626,color:#450a0a,stroke-width:1.5px
+  classDef control fill:#f5f3ff,stroke:#7c3aed,color:#1e1b4b,stroke-width:1px
+  classDef own fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:1px
+
+  class V_MGMT,V_APP,V_NVR,V_OT,V_SOC vlan
+  class FW,LB network
+  class GW,UI,APP_A,APP_B,WORKER_A,WORKER_B,NIFI,COLLECT app
+  class KAFKA1,KAFKA2,KAFKA3,REGISTRY,PGBOUNCER,PG_PRIMARY,PG_REPLICA,REDIS_PRIMARY,REDIS_REPLICA,REDIS_SENTINEL,ES1,ES2,ES3,BACKUP storage
+  class WAZUH,TRACECAT,ITSM sec
+  class VAULT,PROM,GRAF control
+  class OWN_PLATFORM,OWN_INTEGRATION,OWN_DATA,OWN_SOC,OWN_OPS own

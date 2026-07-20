@@ -104,10 +104,23 @@ class MetricsIngestionConsumer(BaseKafkaConsumer):
 
         # Validate timestamp
         try:
-            datetime.fromisoformat(message["timestamp"].replace('Z', '+00:00'))
+            event_time = datetime.fromisoformat(message["timestamp"].replace('Z', '+00:00'))
         except (ValueError, AttributeError):
             logger.warning(f"Invalid timestamp format: {message.get('timestamp')}")
             return False
+
+        # Out-of-order event guard: reject future-dated (>5s) or stale (>5min)
+        age = (datetime.utcnow() - event_time.replace(tzinfo=None)).total_seconds()
+        if age < -5:
+            logger.warning(f"Future event rejected: {message.get('metric_name')} offset={age:.0f}s")
+            return False
+        if age < 0:
+            message["timestamp"] = datetime.utcnow().isoformat()
+        elif age > 300:
+            logger.info(f"Stale event skipped: {message.get('metric_name')} age={age:.0f}s")
+            return False
+        elif age > 60:
+            logger.debug(f"Late event accepted: {message.get('metric_name')} age={age:.0f}s")
 
         return True
 
