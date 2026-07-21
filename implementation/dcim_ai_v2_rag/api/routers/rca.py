@@ -23,7 +23,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 import time
 
 from ..dependencies import require_permission
-from ..main import METRICS_RCA_LATENCY
 
 # Lazy import for RCAEngine (heavy dependency chain)
 def _get_rca_engine():
@@ -159,6 +158,7 @@ async def trigger_rca_analysis(
 
         # Record metrics
         rca_duration = time.time() - req_start
+        from ..main import METRICS_RCA_LATENCY
         if METRICS_RCA_LATENCY:
             METRICS_RCA_LATENCY.observe(rca_duration)
 

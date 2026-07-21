@@ -22,7 +22,6 @@ import json as _json
 import time
 
 from ..dependencies import require_permission
-from ..main import METRICS_LLM_LATENCY, METRICS_LLM_ERRORS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -120,6 +119,8 @@ async def llm_query(
         model_name = os.getenv("LLM_MODEL", "gemma-4-12b-it")
         logger.info(f"LLM response from {model_name} ({len(answer)} chars)")
     else:
+        # Import lazily to avoid circular imports
+        from ..main import METRICS_LLM_ERRORS
         METRICS_LLM_ERRORS.inc()
         logger.warning("LLM response failed/empty. Triggering template fallback.")
 
@@ -129,6 +130,7 @@ async def llm_query(
 
     # Record metrics
     duration = time.time() - start_time
+    from ..main import METRICS_LLM_LATENCY
     if METRICS_LLM_LATENCY:
         METRICS_LLM_LATENCY.observe(duration)
 
