@@ -19,7 +19,10 @@ import logging
 import os
 import json as _json
 
+import time
+
 from ..dependencies import require_permission
+from ..main import METRICS_LLM_LATENCY, METRICS_LLM_ERRORS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -106,6 +109,7 @@ async def llm_query(
     user=Depends(require_permission("analytics.read")),
 ):
     """Ask natural language question. Uses Gemma 4 12B, falls back to templates."""
+    start_time = time.time()
     model_name = "template-fallback"
     answer = None
 
@@ -115,10 +119,18 @@ async def llm_query(
         answer = real_answer
         model_name = os.getenv("LLM_MODEL", "gemma-4-12b-it")
         logger.info(f"LLM response from {model_name} ({len(answer)} chars)")
+    else:
+        METRICS_LLM_ERRORS.inc()
+        logger.warning("LLM response failed/empty. Triggering template fallback.")
 
     if not answer:
         answer = _template_answer(request.query)
         logger.info("Using template fallback")
+
+    # Record metrics
+    duration = time.time() - start_time
+    if METRICS_LLM_LATENCY:
+        METRICS_LLM_LATENCY.observe(duration)
 
     return LLMQueryResponse(
         query=request.query,

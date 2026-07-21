@@ -20,7 +20,10 @@ import os
 # Add parent directory to path to import RCA engine
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from ..dependencies import get_current_user, require_permission
+import time
+
+from ..dependencies import require_permission
+from ..main import METRICS_RCA_LATENCY
 
 # Lazy import for RCAEngine (heavy dependency chain)
 def _get_rca_engine():
@@ -75,6 +78,7 @@ async def trigger_rca_analysis(
     5. Explanation generation
     """
     try:
+        req_start = time.time()
         start_time = datetime.utcnow()
 
         # Build incident dict for RCA engine
@@ -152,6 +156,11 @@ async def trigger_rca_analysis(
                 conn.close()
         except Exception as save_err:
             logger.warning(f"RCA save to DB failed (non-blocking): {save_err}")
+
+        # Record metrics
+        rca_duration = time.time() - req_start
+        if METRICS_RCA_LATENCY:
+            METRICS_RCA_LATENCY.observe(rca_duration)
 
         return response
 
