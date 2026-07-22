@@ -112,8 +112,26 @@ async def llm_query(
     model_name = "template-fallback"
     answer = None
 
+    # 1. Retrieve RAG context from Qdrant
+    try:
+        from ...rag.pipeline import RAGPipeline
+        rag = RAGPipeline()
+        
+        # Search Top-3 most relevant docs
+        docs = rag.vector_store.search(request.query, n_results=3)
+        context = "\n".join([f"- {d['document']}" for d in docs])
+        
+        # Override query with context-augmented prompt
+        prompt = rag.templates["general_query"].format(query=request.query, context=context)
+        citations = [d["metadata"].get("source", "unknown") for d in docs]
+    except Exception as e:
+        logger.warning(f"RAG context retrieval failed: {e}")
+        prompt = request.query
+        citations = []
+        context = ""
+
     # Try real LLM first
-    real_answer = _call_llama(request.query)
+    real_answer = _call_llama(prompt)
     if real_answer:
         answer = real_answer
         model_name = os.getenv("LLM_MODEL", "gemma-4-12b-it")
@@ -137,8 +155,8 @@ async def llm_query(
     return LLMQueryResponse(
         query=request.query,
         answer=answer,
-        citations=[],
-        context_used=0,
+        citations=list(set(citations)),  # deduplicate citations
+        context_used=len(context),
         model=model_name,
     )
 
@@ -151,15 +169,33 @@ async def explain_anomaly(
     user=Depends(require_permission("analytics.read")),
 ):
     """Explain anomaly in natural language."""
-    prompt = (
-        f"Explain this DCIM anomaly:\n"
-        f"- Metric: {request.metric_name}\n"
-        f"- Value: {request.current_value}\n"
-        f"- Expected range: {request.expected_min} to {request.expected_max}\n"
-        f"- Severity: {request.severity}\n"
-        f"- Detection: {request.detection_method}\n\n"
-        f"Provide: 1) What happened, 2) Why it matters, 3) Recommended action."
-    )
+    # RAG Context Retrieval
+    try:
+        from ...rag.pipeline import RAGPipeline
+        rag = RAGPipeline()
+        query_str = f"Anomaly in {request.metric_name}: {request.current_value} vs {request.expected_max}"
+        docs = rag.vector_store.search(query_str, n_results=2)
+        context = "\n".join([f"- {d['document']}" for d in docs])
+        
+        prompt = rag.templates["anomaly_explanation"].format(
+            metric_name=request.metric_name,
+            current_value=request.current_value,
+            expected_range=f"{request.expected_min} to {request.expected_max}",
+            severity=request.severity,
+            method=request.detection_method,
+            context=context
+        )
+    except Exception as e:
+        logger.warning(f"RAG context retrieval failed for explain: {e}")
+        prompt = (
+            f"Explain this DCIM anomaly:\n"
+            f"- Metric: {request.metric_name}\n"
+            f"- Value: {request.current_value}\n"
+            f"- Expected range: {request.expected_min} to {request.expected_max}\n"
+            f"- Severity: {request.severity}\n"
+            f"- Detection: {request.detection_method}\n\n"
+            f"Provide: 1) What happened, 2) Why it matters, 3) Recommended action."
+        )
 
     model_name = "template-fallback"
     explanation = None

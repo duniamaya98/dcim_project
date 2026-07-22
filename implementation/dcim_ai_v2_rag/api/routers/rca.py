@@ -21,6 +21,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import time
+import json as _json
 
 from ..dependencies import require_permission
 
@@ -111,6 +112,28 @@ async def trigger_rca_analysis(
             domain_probabilities=result.domain_probabilities,
             analysis_duration_seconds=duration
         )
+
+        # RAG LLM Explanation Generation
+        try:
+            from .llm import _call_llama
+            from ...rag.pipeline import RAGPipeline
+            rag = RAGPipeline()
+            query_str = f"Incident {result.incident_id} root cause in {result.root_domain} affecting {', '.join(result.active_domains)}"
+            docs = rag.vector_store.search(query_str, n_results=2)
+            context = "\n".join([f"- {d['document']}" for d in docs])
+            
+            prompt = rag.templates["rca_explanation"].format(
+                incident_id=result.incident_id,
+                root_domain=result.root_domain,
+                confidence=f"{result.confidence:.2f}",
+                causal_chain=_json.dumps(result.causal_chain),
+                context=context
+            )
+            llm_explanation = _call_llama(prompt)
+            if llm_explanation:
+                result.explanation = llm_explanation
+        except Exception as e:
+            logger.warning(f"Failed to generate LLM explanation with RAG: {e}")
 
         # Auto-save to TimescaleDB (best-effort, non-blocking)
         try:
