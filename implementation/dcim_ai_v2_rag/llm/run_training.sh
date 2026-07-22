@@ -11,6 +11,7 @@ sleep 5
 
 echo "[2/3] Running Quick Grid Search (Pre-split Dataset) on GPU 0..."
 # Using the correct environment
+cd /home/infra/dcim_project/implementation/dcim_ai_v2_rag/llm
 /home/infra/rnd_rag-anything/ragavenv/bin/python3 finetune_proper.py --grid --quick
 
 echo "[3/3] Restarting llama-server..."
