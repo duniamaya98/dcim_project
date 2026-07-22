@@ -36,7 +36,9 @@ from collections import defaultdict
 
 # ─── Paths ───
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DATASET_PATH = Path(__file__).resolve().parent / "datasets" / "dcim_instructions.jsonl"
+DATASET_TRAIN_PATH = Path(__file__).resolve().parent / "datasets" / "processed" / "train.jsonl"
+DATASET_VAL_PATH = Path(__file__).resolve().parent / "datasets" / "processed" / "val.jsonl"
+DATASET_TEST_PATH = Path(__file__).resolve().parent / "datasets" / "processed" / "test.jsonl"
 OUTPUT_BASE = Path(__file__).resolve().parent / "models"
 GRID_RESULTS_PATH = Path(__file__).resolve().parent / "grid_search_results.tsv"
 TEST_SET_PATH = Path(__file__).resolve().parent / "datasets" / "dcim_test_set.jsonl"
@@ -49,14 +51,14 @@ WARMUP_RATIO = 0.05
 BATCH_SIZE = 1
 SEED = 42
 
-# ─── Grid search space ───
+# ─── Grid Config ───
 GRID_LR = [1e-4, 2e-4, 5e-4]
-GRID_LORA_R = [8, 16]
+GRID_LORA_R = [8, 16, 32]
 GRID_EPOCHS = [2, 3, 5]
-GRID_LORA_ALPHA_MAP = {8: 16, 16: 32}  # alpha = 2 * r
+GRID_LORA_ALPHA_MAP = {8: 16, 16: 32, 32: 64}  # alpha = 2 * r
 
 # ─── Quick grid (max_steps limited) ───
-QUICK_MAX_STEPS = 200
+QUICK_MAX_STEPS = 10
 
 
 def set_seed(seed: int):
@@ -69,61 +71,35 @@ def set_seed(seed: int):
     random.seed(seed)
 
 
-def load_and_split_dataset(path: Path, test_size: float = 0.15, val_size: float = 0.15,
-                           seed: int = SEED, save_test: bool = True):
-    """Load dataset and split into train/val/test (70/15/15)."""
+def load_datasets_from_processed(train_path: Path, val_path: Path, test_path: Path):
+    """Load pre-split train/val/test datasets from processed folder."""
     from datasets import Dataset
-    from sklearn.model_selection import train_test_split
 
-    records = []
-    with open(path, "r") as f:
-        for line in f:
-            if line.strip():
-                records.append(json.loads(line))
+    def read_jsonl(path):
+        records = []
+        with open(path, "r") as f:
+            for line in f:
+                if line.strip():
+                    r = json.loads(line)
+                    records.append({
+                        "instruction": r["instruction"],
+                        "input": r.get("input", ""),
+                        "output": r["output"],
+                        "category": r.get("metadata", {}).get("instruction_type", "unknown"),
+                    })
+        return records
 
-    print(f"[DATA] Total records: {len(records)}")
-
-    # Extract fields for training
-    data = [{
-        "instruction": r["instruction"],
-        "input": r.get("input", ""),
-        "output": r["output"],
-        "category": r.get("metadata", {}).get("instruction_type", "unknown"),
-    } for r in records]
-
-    # First split: train_val vs test
-    indices = list(range(len(data)))
-    train_val_idx, test_idx = train_test_split(
-        indices, test_size=test_size, random_state=seed,
-        stratify=[d["category"] for d in data]
-    )
-
-    # Second split: train vs val
-    train_val_data = [data[i] for i in train_val_idx]
-    test_data = [data[i] for i in test_idx]
-    train_val_cats = [d["category"] for d in train_val_data]
-    train_val_idx2 = list(range(len(train_val_data)))
-
-    val_ratio = val_size / (1 - test_size)
-    train_idx2, val_idx2 = train_test_split(
-        train_val_idx2, test_size=val_ratio, random_state=seed,
-        stratify=train_val_cats
-    )
-
-    train_data = [train_val_data[i] for i in train_idx2]
-    val_data = [train_val_data[i] for i in val_idx2]
+    train_data = read_jsonl(train_path)
+    val_data = read_jsonl(val_path)
+    test_data = read_jsonl(test_path)
 
     print(f"[DATA] Train: {len(train_data)}, Val: {len(val_data)}, Test: {len(test_data)}")
 
-    # Save test set separately (held-out, never touched during training)
-    if save_test and not TEST_SET_PATH.exists():
-        TEST_SET_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(TEST_SET_PATH, "w") as f:
-            for item in test_data:
-                f.write(json.dumps(item, ensure_ascii=False) + "\n")
-        print(f"[DATA] Test set saved: {TEST_SET_PATH}")
+    # Update global TEST_SET_PATH definition
+    global TEST_SET_PATH
+    TEST_SET_PATH = test_path
 
-    # Show category distribution
+    return Dataset.from_list(train_data), Dataset.from_list(val_data), Dataset.from_list(test_data)
     from collections import Counter
     for name, subset in [("Train", train_data), ("Val", val_data), ("Test", test_data)]:
         cats = Counter(d["category"] for d in subset)
@@ -348,7 +324,7 @@ def train_single_run(
         "gpu": f"GPU {gpu}",
         "base_model": BASE_MODEL,
         "method": "QLoRA (BitsAndBytes NF4)",
-        "dataset_hash": compute_dataset_hash(DATASET_PATH),
+        "dataset_hash": compute_dataset_hash(DATASET_TRAIN_PATH),
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -369,7 +345,7 @@ def train_single_run(
     return metrics
 
 
-def run_grid_search(quick: bool = False, gpu: int = 0):
+def run_grid_search(quick: bool = False, gpu: int = 0, train_ds=None, val_ds=None):
     """Grid search over hyperparameter space."""
     set_seed(SEED)
 
@@ -379,7 +355,8 @@ def run_grid_search(quick: bool = False, gpu: int = 0):
     print("=" * 70)
 
     # Load & split dataset (only once)
-    train_ds, val_ds, test_ds = load_and_split_dataset(DATASET_PATH)
+    if train_ds is None or val_ds is None:
+        train_ds, val_ds, test_ds = load_datasets_from_processed(DATASET_TRAIN_PATH, DATASET_VAL_PATH, DATASET_TEST_PATH)
 
     # Build grid
     grid = []
@@ -590,18 +567,13 @@ def main():
     parser.add_argument("--gpu", type=int, default=0, help="GPU device ID")
     parser.add_argument("--version", type=str, default=None, help="Model version name")
 
-    global DATASET_PATH
+    global DATASET_TRAIN_PATH
     args = parser.parse_args()
 
     # Check dataset
-    if not DATASET_PATH.exists():
-        # Try alternate path via symlink
-        alt = Path("/home/infra/rnd_rag-anything/dcim_ai/llm/datasets/dcim_instructions.jsonl")
-        if alt.exists():
-            DATASET_PATH = alt
-        else:
-            print(f"❌ Dataset not found: {DATASET_PATH}")
-            sys.exit(1)
+    if not DATASET_TRAIN_PATH.exists():
+        print(f"❌ Dataset not found at {DATASET_TRAIN_PATH}")
+        return
 
     # Check CUDA
     import torch
@@ -616,11 +588,14 @@ def main():
     if args.baseline:
         run_baseline_eval(gpu=args.gpu)
     elif args.grid:
-        run_grid_search(quick=args.quick, gpu=args.gpu)
+        # Patch grid search to use pre-split data
+        set_seed(SEED)
+        train_ds, val_ds, test_ds = load_datasets_from_processed(DATASET_TRAIN_PATH, DATASET_VAL_PATH, DATASET_TEST_PATH)
+        run_grid_search(quick=args.quick, gpu=args.gpu, train_ds=train_ds, val_ds=val_ds)
     else:
         # Single run
         set_seed(SEED)
-        train_ds, val_ds, test_ds = load_and_split_dataset(DATASET_PATH)
+        train_ds, val_ds, test_ds = load_datasets_from_processed(DATASET_TRAIN_PATH, DATASET_VAL_PATH, DATASET_TEST_PATH)
         train_single_run(
             lr=args.lr,
             lora_r=args.lora_r,
