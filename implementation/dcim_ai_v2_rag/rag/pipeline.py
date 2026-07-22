@@ -25,30 +25,30 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
-# Vector Store (ChromaDB)
+# Vector Store (Qdrant)
 # ============================================================================
+
+from qdrant_client import QdrantClient
+from qdrant_client.http import models as qmodels
 
 class VectorStore:
     """
-    Lightweight vector store for DCIM knowledge base.
+    Robust vector store for DCIM knowledge base.
 
-    Uses ChromaDB with sentence-transformers embeddings.
+    Uses Qdrant (client-server) with sentence-transformers embeddings.
     Stores: anomaly events, RCA reports, runbooks, metric descriptions.
     """
 
     def __init__(
         self,
-        persist_directory: str = None,
+        qdrant_url: str = "http://localhost:6333",
         collection_name: str = "dcim_knowledge",
         embedding_model: str = "all-MiniLM-L6-v2",
     ):
-        self.persist_directory = persist_directory or os.path.join(
-            os.path.dirname(__file__), "..", "data", "chromadb"
-        )
+        self.qdrant_url = qdrant_url
         self.collection_name = collection_name
         self.embedding_model_name = embedding_model
         self._client = None
-        self._collection = None
         self._embedding_fn = None
         self._initialized = False
 
@@ -58,32 +58,24 @@ class VectorStore:
             return
 
         try:
-            import chromadb
-            from chromadb.config import Settings
-        except ImportError:
-            raise ImportError(
-                "chromadb not installed. Run: pip install chromadb sentence-transformers"
-            )
-
-        os.makedirs(self.persist_directory, exist_ok=True)
-
-        self._client = chromadb.PersistentClient(
-            path=self.persist_directory,
-            settings=Settings(anonymized_telemetry=False),
-        )
-
-        # Get or create collection
-        try:
-            self._collection = self._client.get_collection(self.collection_name)
-            logger.info(f"Loaded existing collection '{self.collection_name}'")
-        except Exception:
-            self._collection = self._client.create_collection(
-                name=self.collection_name,
-                metadata={"description": "DCIM Block 7 knowledge base"},
-            )
-            logger.info(f"Created new collection '{self.collection_name}'")
-
-        self._initialized = True
+            self._client = QdrantClient(url=self.qdrant_url)
+            
+            # Check if collection exists
+            if not self._client.collection_exists(self.collection_name):
+                self._client.create_collection(
+                    collection_name=self.collection_name,
+                    vectors_config=qmodels.VectorParams(
+                        size=384,  # all-MiniLM-L6-v2 dimension
+                        distance=qmodels.Distance.COSINE
+                    )
+                )
+                logger.info(f"Created new collection '{self.collection_name}' in Qdrant")
+            else:
+                logger.info(f"Loaded existing collection '{self.collection_name}' from Qdrant")
+                
+            self._initialized = True
+        except Exception as e:
+            logger.error(f"Failed to connect to Qdrant: {e}")
 
     @property
     def embedding_fn(self):
@@ -101,6 +93,8 @@ class VectorStore:
     ):
         """Add documents to the vector store."""
         self._lazy_init()
+        if not self._client:
+            return
 
         if ids is None:
             import uuid
@@ -110,11 +104,18 @@ class VectorStore:
 
         embeddings = self.embedding_fn.encode(documents).tolist()
 
-        self._collection.add(
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas,
-            ids=ids,
+        points = [
+            qmodels.PointStruct(
+                id=idx,
+                vector=vector,
+                payload={"text": doc, **meta}
+            )
+            for idx, vector, doc, meta in zip(ids, embeddings, documents, metadatas)
+        ]
+        
+        self._client.upsert(
+            collection_name=self.collection_name,
+            points=points
         )
         logger.info(f"Added {len(documents)} documents to '{self.collection_name}'")
 
@@ -126,42 +127,75 @@ class VectorStore:
     ) -> List[Dict[str, Any]]:
         """Semantic search over documents."""
         self._lazy_init()
+        if not self._client:
+            return []
 
-        query_embedding = self.embedding_fn.encode([query]).tolist()
+        query_embedding = self.embedding_fn.encode(query).tolist()
 
-        results = self._collection.query(
-            query_embeddings=query_embedding,
-            n_results=n_results,
-            where=where,
-        )
+        search_filter = None
+        if where:
+            conditions = []
+            for k, v in where.items():
+                conditions.append(
+                    qmodels.FieldCondition(
+                        key=k,
+                        match=qmodels.MatchValue(value=v)
+                    )
+                )
+            search_filter = qmodels.Filter(must=conditions)
+
+        if isinstance(query_embedding, list) and len(query_embedding) > 0 and isinstance(query_embedding[0], list):
+            query_vector = query_embedding[0]
+        else:
+            query_vector = query_embedding
+
+        # Handle backward compatibility / alternative client methods
+        if hasattr(self._client, 'query_points'):
+            # Newer Qdrant client versions
+            results = self._client.query_points(
+                collection_name=self.collection_name,
+                query=query_vector,
+                query_filter=search_filter,
+                limit=n_results
+            ).points
+        else:
+            # Older Qdrant client versions
+            results = self._client.search(
+                collection_name=self.collection_name,
+                query_vector=query_vector,
+                query_filter=search_filter,
+                limit=n_results
+            )
 
         return [
             {
-                "id": ids,
-                "document": doc,
-                "metadata": meta,
-                "distance": dist,
+                "id": str(hit.id),
+                "document": hit.payload.get("text", ""),
+                "metadata": {k: v for k, v in hit.payload.items() if k != "text"},
+                "distance": 1.0 - getattr(hit, "score", 1.0), # Approximate
             }
-            for ids, doc, meta, dist in zip(
-                results.get("ids", [[]])[0],
-                results.get("documents", [[]])[0],
-                results.get("metadatas", [[]])[0],
-                results.get("distances", [[]])[0],
-            )
+            for hit in results
         ]
 
     def count(self) -> int:
         """Return number of documents in collection."""
         self._lazy_init()
-        return self._collection.count()
+        if not self._client:
+            return 0
+        return self._client.count(self.collection_name).count
 
     def delete_collection(self):
         """Delete collection (reset)."""
         self._lazy_init()
+        if not self._client:
+            return
         self._client.delete_collection(self.collection_name)
-        self._collection = self._client.create_collection(
-            name=self.collection_name,
-            metadata={"description": "DCIM Block 7 knowledge base"},
+        self._client.create_collection(
+            collection_name=self.collection_name,
+            vectors_config=qmodels.VectorParams(
+                size=384,
+                distance=qmodels.Distance.COSINE
+            )
         )
         logger.info(f"Collection '{self.collection_name}' reset")
 
