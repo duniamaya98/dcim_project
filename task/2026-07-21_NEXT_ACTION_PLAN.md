@@ -19,20 +19,20 @@
 ### Fase 2 — Proper Fine-Tuning Pipeline (Estimasi: 3-5 Jam)
 | ID | Task | Skrip Terkait | Status |
 |----|------|---------------|--------|
-| T2.1 | Grid Search Hyperparameter (LR, Rank, Epoch) | `finetune_unsloth.py` | ⚠️ Single Config |
-| T2.2 | Logging training metrics | Baru | ❌ |
-| T2.3 | Early stopping (3 epoch no improve) | Baru | ❌ |
-| T2.4 | Checkpoint management (best model) | Baru | ❌ |
+| T2.1 | Grid Search Hyperparameter (LR, Rank, Epoch) | `finetune_proper.py` | ✅ Done |
+| T2.2 | Logging training metrics | `finetune_proper.py` | ✅ Done |
+| T2.3 | Early stopping (3 epoch no improve) | `finetune_proper.py` | ✅ Done |
+| T2.4 | Checkpoint management (best model) | `finetune_proper.py` | ✅ Done |
 | T2.5 | Optimasi menggunakan QLoRA/Unsloth | `finetune_unsloth.py` | ⚠️ Masih POC |
 
 ### Fase 3 — Evaluation & Model Registry (Estimasi: 2-3 Jam)
 | ID | Task | Skrip Terkait | Status |
 |----|------|---------------|--------|
-| T3.1 | Per-category metrics (Precision, Recall, F1) | `evaluate_model.py` | ⚠️ Basic |
-| T3.2 | Hallucination & Reasoning test | Baru | ❌ |
-| T3.3 | RCA test (4 skenario infrastruktur) | `test_dcim_ai.py` | ⚠️ Sederhana |
-| T3.4 | Promotion Gatekeeper (Threshold F1 ≥ 0.6) | `promotion_gatekeeper.py`| ❌ |
-| T3.5 | Export GGUF dengan version tag | `export_gguf.py` | ✅ Ada |
+| T3.1 | Per-category metrics (Precision, Recall, F1) | `evaluate_and_promote.py` | ✅ Done |
+| T3.2 | Hallucination & Reasoning test | `evaluate_and_promote.py` | ✅ Done |
+| T3.3 | RCA test (4 skenario infrastruktur) | `test_dcim_ai.py` | ⚠️ Partial |
+| T3.4 | Promotion Gatekeeper (Threshold F1 ≥ 0.6) | `evaluate_and_promote.py`| ✅ Done |
+| T3.5 | Export GGUF dengan version tag | `export_gguf.py` | ✅ Done |
 
 ---
 
@@ -42,9 +42,9 @@
 ### Fase 4 — RAG (Retrieval-Augmented Generation) Pipeline (Estimasi: 3-5 Jam)
 | ID | Task | Skrip Terkait | Status |
 |----|------|---------------|--------|
-| T4.1 | Vector Store Setup (Qdrant) | `rag/pipeline.py` | ❌ In-memory |
-| T4.2 | Embedding Pipeline (CMDB, Logs, Runbooks) | `rag/pipeline.py` | ❌ |
-| T4.3 | Context Retrieval saat API `/query` & `/explain` dipanggil | `api/routers/llm.py` | ❌ |
+| T4.1 | Vector Store Setup (Qdrant) | `rag/pipeline.py` | ✅ Done |
+| T4.2 | Embedding Pipeline (CMDB, Logs, Runbooks) | `rag/index_knowledge.py` | ✅ Done |
+| T4.3 | Context Retrieval saat API `/query` & `/explain` dipanggil | `api/routers/llm.py` | ✅ Done |
 
 ### Fase 5 — Predictive Maintenance ML (Estimasi: 3-5 Hari)
 | ID | Task | Detail | Status |
