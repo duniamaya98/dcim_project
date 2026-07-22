@@ -49,9 +49,9 @@
 ### Fase 5 — Predictive Maintenance ML (Estimasi: 3-5 Hari)
 | ID | Task | Detail | Status |
 |----|------|--------|--------|
-| T5.1 | Prophet integration | Integrasi library Prophet untuk forecasting | ❌ |
-| T5.2 | LSTM failure prediction | PyTorch LSTM model dari TimescaleDB historical data | ❌ |
-| T5.3 | Remaining Useful Life (RUL) | RUL calculation dari LSTM output | ❌ |
+| T5.1 | Prophet integration | Integrasi library Prophet untuk forecasting | ✅ Done |
+| T5.2 | LSTM failure prediction | PyTorch LSTM model dari TimescaleDB historical data | ✅ Done |
+| T5.3 | Remaining Useful Life (RUL) | RUL calculation dari LSTM output | ✅ Done |
 
 ---
 

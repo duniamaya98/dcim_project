@@ -26,8 +26,19 @@ import logging
 import os
 import sys
 import uuid
+import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+# Try to import torch for LSTM
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import Dataset, DataLoader
+    import numpy as np
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -308,7 +319,187 @@ class SimpleForecaster:
 
 
 # ============================================================================
-# Training Orchestrator
+# LSTM Model (PyTorch)
+# ============================================================================
+
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import Dataset, DataLoader
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+if TORCH_AVAILABLE:
+    class TimeSeriesDataset(Dataset):
+        def __init__(self, data, seq_len=10):
+            self.seq_len = seq_len
+            self.x, self.y = self._create_sequences(data)
+
+        def _create_sequences(self, data):
+            x, y = [], []
+            for i in range(len(data) - self.seq_len):
+                x.append(data[i:(i + self.seq_len)])
+                y.append(data[i + self.seq_len])
+            return torch.tensor(np.array(x), dtype=torch.float32), torch.tensor(np.array(y), dtype=torch.float32)
+
+        def __len__(self):
+            return len(self.x)
+
+        def __getitem__(self, idx):
+            return self.x[idx], self.y[idx]
+
+    class LSTMModel(nn.Module):
+        def __init__(self, input_size=1, hidden_size=64, num_layers=2, output_size=1):
+            super().__init__()
+            self.hidden_size = hidden_size
+            self.num_layers = num_layers
+            self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+            self.fc = nn.Linear(hidden_size, output_size)
+
+        def forward(self, x):
+            # x shape: (batch, seq_len, features)
+            h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+            out, _ = self.lstm(x, (h0, c0))
+            # Get last time step
+            out = self.fc(out[:, -1, :])
+            return out
+
+class LSTMForecaster:
+    """Wrapper for PyTorch LSTM model for DCIM prediction & RUL calculation."""
+    def __init__(self, seq_len=20, epochs=50, lr=0.001):
+        self.seq_len = seq_len
+        self.epochs = epochs
+        self.lr = lr
+        self.models = {}
+        self.scalers = {}
+        if TORCH_AVAILABLE:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    def _minmax_scale(self, data):
+        min_val = np.min(data)
+        max_val = np.max(data)
+        if max_val == min_val:
+            scaled = np.zeros_like(data)
+        else:
+            scaled = (data - min_val) / (max_val - min_val)
+        return scaled, min_val, max_val
+
+    def fit(self, df: pd.DataFrame, metric_col: str):
+        if not TORCH_AVAILABLE:
+            logger.error("PyTorch not available, cannot train LSTM")
+            return
+            
+        for ci_id, group in df.groupby("ci_id"):
+            if "time" in group.columns:
+                group = group.sort_values("time")
+            elif "timestamp" in group.columns:
+                group = group.sort_values("timestamp")
+            
+            if len(group) <= self.seq_len + 5:
+                continue
+
+            values = group[metric_col].values
+            scaled_values, min_val, max_val = self._minmax_scale(values)
+            self.scalers[ci_id] = (min_val, max_val)
+
+            # Reshape for univariate
+            scaled_values = scaled_values.reshape(-1, 1)
+
+            dataset = TimeSeriesDataset(scaled_values, seq_len=self.seq_len)
+            dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+
+            model = LSTMModel(input_size=1).to(self.device)
+            criterion = nn.MSELoss()
+            optimizer = torch.optim.Adam(model.parameters(), lr=self.lr)
+
+            model.train()
+            for epoch in range(self.epochs):
+                for x_batch, y_batch in dataloader:
+                    x_batch, y_batch = x_batch.to(self.device), y_batch.to(self.device)
+                    optimizer.zero_grad()
+                    y_pred = model(x_batch)
+                    loss = criterion(y_pred, y_batch)
+                    loss.backward()
+                    optimizer.step()
+
+            self.models[ci_id] = model
+            logger.info(f"Fitted LSTM for CI {ci_id} ({len(group)} points)")
+
+    def predict_rul(self, ci_id: str, df: pd.DataFrame, metric_col: str, threshold: float = 85.0, max_future_steps: int = 144):
+        """
+        Predict Remaining Useful Life (RUL).
+        Auto-regressive forecasting until the prediction hits the threshold.
+        max_future_steps=144 implies up to 24 hours if data is 10-minute resolution.
+        """
+        if ci_id not in self.models:
+            return None
+
+        model = self.models[ci_id]
+        model.eval()
+        min_val, max_val = self.scalers[ci_id]
+
+        # Get last sequence
+        if "time" in df.columns:
+            group = df[df["ci_id"] == ci_id].sort_values("time")
+        elif "timestamp" in df.columns:
+            group = df[df["ci_id"] == ci_id].sort_values("timestamp")
+        else:
+            group = df[df["ci_id"] == ci_id]
+        if len(group) < self.seq_len:
+            return None
+
+        last_vals = group[metric_col].values[-self.seq_len:]
+        
+        # Scale last sequence
+        if max_val == min_val:
+            scaled_last = np.zeros_like(last_vals)
+        else:
+            scaled_last = (last_vals - min_val) / (max_val - min_val)
+
+        current_seq = torch.tensor(scaled_last, dtype=torch.float32).reshape(1, self.seq_len, 1).to(self.device)
+
+        steps_to_failure = -1
+        predictions = []
+
+        with torch.no_grad():
+            for step in range(max_future_steps):
+                pred = model(current_seq) # shape (1, 1)
+                
+                # Unscale prediction
+                real_pred = (pred.item() * (max_val - min_val)) + min_val
+                predictions.append(real_pred)
+
+                if real_pred >= threshold:
+                    steps_to_failure = step + 1
+                    break
+                
+                # Shift sequence left and append new prediction
+                new_seq = torch.zeros_like(current_seq)
+                new_seq[0, :-1, 0] = current_seq[0, 1:, 0]
+                new_seq[0, -1, 0] = pred.item()
+                current_seq = new_seq
+
+        if steps_to_failure == -1:
+            rul_status = "healthy"
+            rul_hours = "> 24h"
+        else:
+            rul_status = "critical" if steps_to_failure <= 36 else "warning"
+            # Assuming 10m intervals: step * 10 / 60 = hours
+            rul_hours = f"{(steps_to_failure * 10) / 60:.1f}h"
+
+        return {
+            "ci_id": ci_id,
+            "rul_status": rul_status,
+            "estimated_rul": rul_hours,
+            "steps_to_threshold": steps_to_failure,
+            "last_value": last_vals[-1],
+            "threshold": threshold
+        }
+
+# ============================================================================
+# Training Runner
 # ============================================================================
 
 def train_and_evaluate(
@@ -357,7 +548,35 @@ def train_and_evaluate(
             logger.warning("Prophet not installed, skipping")
             results["prophet"] = {"status": "skipped", "reason": "prophet not installed"}
 
-    # Linear regression
+    # LSTM
+    if model_type in ("all", "lstm"):
+        logger.info("Training LSTM models...")
+        if TORCH_AVAILABLE:
+            lstm = LSTMForecaster()
+            lstm.fit(df, metric_col="cpu_usage_percent")
+            
+            lstm_preds = []
+            for ci_id in lstm.models.keys():
+                pred = lstm.predict_rul(ci_id, df, metric_col="cpu_usage_percent", threshold=85.0)
+                if pred:
+                    lstm_preds.append(pred)
+
+            lstm_result = {
+                "model": "lstm",
+                "num_cis": len(lstm.models),
+                "predictions": lstm_preds,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if output_dir:
+                with open(output_dir / "lstm_v1.0_predictions.json", "w") as f:
+                    json.dump(lstm_result, f, indent=2, default=str)
+            results["lstm"] = lstm_result
+        else:
+            logger.warning("PyTorch not installed, skipping LSTM")
+            results["lstm"] = {"status": "skipped", "reason": "pytorch not installed"}
+
+    # Linear Regression (Baseline)
     if model_type in ("all", "linear"):
         logger.info("Training linear regression models...")
         sf = SimpleForecaster()
@@ -422,8 +641,8 @@ def main():
         description="Train predictive maintenance models for Block 7"
     )
     parser.add_argument(
-        "--model", choices=["all", "prophet", "linear"], default="all",
-        help="Model type to train (default: all)",
+        "--model", choices=["all", "prophet", "linear", "lstm"], default="all",
+        help="Which model(s) to train"
     )
     parser.add_argument(
         "--output-dir", default=None,
